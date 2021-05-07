@@ -1,0 +1,2 @@
+
+Set-AzVMCustomScriptExtension -ResourceGroupName test-mystuff -VMName testencryption -Name secondipcustomextension -FileUri 'https://scriptstestmystuff.blob.core.windows.net/scripts/SecondIpAddress.AzureVM.ps1?sv=2019-02-02&st=2020-05-16T02%3A20%3A46Z&se=2020-05-17T02%3A20%3A46Z&sr=b&sp=r&sig=tWnAf%2FqsiHLuqPY96%2FlumHvM49jXb%2F2apZqVYPoCSic%3D' -Run .\SecondIpAddress.AzureVM.ps1 -Location eastus

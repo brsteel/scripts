@@ -1,0 +1,1 @@
+Get-AzRoleDefinition | Where-Object {$_.IsCustom -eq $true} | ConvertTo-Json | Out-File CustomRoles.json
