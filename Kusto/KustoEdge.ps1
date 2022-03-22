@@ -1,13 +1,20 @@
-$zipfilepath = "C:\Users\brsteel\Downloads\AzsEdgeDiagnostics.0.0.1483.323.zip"
+$zipDownloadFile = "https://az2112130040005167.blob.core.windows.net/asdt/AzsEdgeDiagnostics.0.0.1483.323.zip?sp=r&st=2022-03-11T14:47:32Z&se=2022-03-25T21:47:32Z&spr=https&sv=2020-08-04&sr=b&sig=h8JrLehvgKCQA9GT3sxT5yPv9ykP%2Bx6w7XJbecuEMa8%3D"
+$zipFilePath = "C:\edgekusto\AzsEdgeDiagnostics.0.0.1483.323.zip"
 $kustoRootPath = "C:\edgekusto"
 $kustoLibPath = "c:\edgekusto\lib"
 $kustoDbPath = "c:\edgekusto\dbs"
 $ingestionLogPath = "c:\logs"
 $dbName = "myDB"
 
-New-Item -Path $kustoRootPath -ItemType Directory
+Remove-Item -Path $kustoRootPath -Recurse -Force
 
-Expand-Archive -Path $zipfilepath -DestinationPath $kustoRootPath
+New-Item -Path $kustoRootPath -ItemType Directory -Force
+
+Invoke-WebRequest -Uri $zipDownloadFile -OutFile $zipFilePath
+
+Unblock-File $zipFilePath -Confirm:$false
+
+Expand-Archive -Path $zipfilepath -DestinationPath $kustoRootPath -Force
 
 Set-Location "$kustoLibPath"
 
