@@ -26,6 +26,11 @@ Start-AzSEdgeDiagnostics -KustoPath $kustoLibPath
 
 $db1 = New-AzSEdgeDiagnosticsDatabase -Name $dbName -Directory $kustoDbPath
 
+#get sample log zip file downloaded
+#expand the archive of xip files to ingestionlogs folder
+
 Import-AzSEdgeDiagnosticsLogs -DatabaseName $db1 -LogPath $ingestionLogPath
 
-#Launch Kusto Explorer (C:\EdgeKusto\Kusto.Explorer\Kusto.Explorer.exe) and create new connection to net.tcp://localhost with Security set to None 
+C:\EdgeKusto\Kusto.Explorer\Kusto.Explorer.exe
+#net.tcp//localhost
+#Security = None
