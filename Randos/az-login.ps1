@@ -19,7 +19,7 @@ Connect-AzAccount -Environment AzUSSec -Subscription $subId -TenantId $tenantId
 #or
 
 [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
-$url = 'https://management.azure.microsoft.com/metadata/endpoints?api-version=2020-06-01'
+$url = 'https://management.azure.microsoft.scloud/metadata/endpoints?api-version=2020-06-01'
 $env = Add-AzEnvironment -PublishSettingsFileUrl $url
 Connect-AzAccount -Environment $env.where({$_.type -eq 'Discovered'}).Name -Tenant $tenantId -Subscription $subId -UseDeviceAuthentication
 
