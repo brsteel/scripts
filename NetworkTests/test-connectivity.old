@@ -1,0 +1,76 @@
+$urllist = "https://portal.azure.us", "https://www.google.com", "https://www.bing.com"
+
+# Define the URI of the upload endpoint
+$uri = "http://localhost:3000/upload"
+
+# Define the path to the file you want to upload
+$fileToUpload = "path-to-your-file"
+
+# Create a multipart/form-data content
+$multipartContent = New-Object System.Net.Http.MultipartFormDataContent
+$fileStream = [System.IO.FileStream]::new($fileToUpload, [System.IO.FileMode]::Open)
+$fileHeader = New-Object System.Net.Http.Headers.ContentDispositionHeaderValue("form-data")
+$fileHeader.Name = "networktest"
+$fileHeader.FileName = [System.IO.Path]::GetFileName($fileToUpload)
+$fileContent = New-Object System.Net.Http.StreamContent($fileStream)
+$fileContent.Headers.ContentDisposition = $fileHeader
+$fileContent.Headers.ContentType = New-Object System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream")
+$multipartContent.Add($fileContent)
+
+# Send the POST request
+$response = Invoke-RestMethod -Uri $uri -Method Post -Body $multipartContent
+
+# Output the response
+$response
+
+# Rest Call
+#FileUpload -uri "http://localhost:3000/upload" -fileToUpload "path-to-your-file"
+
+foreach ($url in $urllist) {
+
+    try {
+        #setup host name
+        $hostName = $url -replace "https?://", ""
+        $logfile = "$env:USERPROFILE\Documents\NetworkTests-$hostname.log"
+
+        #get DNS resolution information
+        $ipAddress = [System.Net.Dns]::GetHostAddresses($hostName) | Select-Object -ExpandProperty IPAddressToString
+        $nslookupResult = nslookup $hostName 2>&1 | Out-Null
+        $nslookupResult -match "Server:\s+(.+)" | Out-Null
+        $serverName = $matches[1] 
+        $nslookupResult -match "Address:\s+(.+)" | Out-Null
+        $serverAddress = $matches[1] 
+        Write-Output "Target: $hostName" | Tee-Object -FilePath $logfile
+        Write-Output "IP Address: $ipAddress" | Tee-Object -Append -FilePath $logfile
+        Write-Output "Authoritative DNS Server: $ServerName" | Tee-Object -Append -FilePath $logfile
+        Write-Output "DNS Server Address: $ServerAddress" | Tee-Object -Append -FilePath $logfile
+
+        #perform traceroute to target
+        Write-Output "Tracing route to target, please wait, progress not shown."
+        $traceRouteResult = TRACERT.EXE -h 100 $hostName | Out-String
+        Write-Output $traceRouteResult | Tee-Object -Append -FilePath $logfile
+
+        #perform response time test to target
+        $count = 100
+        $timeout = 5000  # 5 seconds
+        Write-Output "Testing response time to $hostname using WebRequest 100 times using $timeout ms timeout" | Tee-Object -Append -FilePath $logfile
+        while ($count -gt 0)
+        {
+            Start-Sleep -Seconds 1
+            $request = [System.Net.WebRequest]::Create($url)
+            $request.Timeout = $timeout
+            $startTime = Get-Date
+            $response = $request.GetResponse()
+            $endTime = Get-Date
+            $responseTime = ($endTime - $startTime).TotalMilliseconds
+            Write-Output "$responseTime ms"| Tee-Object -Append -FilePath $logfile
+            $response.Close()
+            $count--
+        }
+
+
+
+    } catch {
+        Write-Output "Error: $($_.Exception.Message)"
+    }
+}
