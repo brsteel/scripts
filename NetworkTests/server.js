@@ -1,29 +1,33 @@
 const express = require('express');
 const multer  = require('multer');
-const { BlobServiceClient } = require('@azure/storage-blob');
+const { BlockBlobClient } = require('@azure/storage-blob');
 const inMemoryStorage = multer.memoryStorage();
 const upload = multer({ storage: inMemoryStorage });
 
 const app = express();
 
 app.get('/', function (req, res) {
-    res.send('Your IP address is ' + req.ip);
+    var ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    res.send('Your IP address is ' + ip);
 });
 
 app.post('/upload', upload.single('networktest'), async function (req, res, next) {
-    const blobServiceClient = BlobServiceClient.fromConnectionString('your-azure-storage-connection-string');
-    const containerClient = blobServiceClient.getContainerClient('your-container-name');
-
+    const sasUrl = req.query.sasUrl; // Get the SAS URL from the query parameters
+    const blobClient = new BlockBlobClient(sasUrl);
     const blobName = Date.now() + req.file.originalname;
-    const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-
-    // Insert client IP address into the file before uploading
-    const fileContent = `Client IP: ${req.ip}\n\n${req.file.buffer.toString()}`;
-    const uploadBlobResponse = await blockBlobClient.upload(fileContent, fileContent.length);
-
+    
+    // Upload the file to Azure Blob Storage
+    const uploadBlobResponse = await blobClient.upload(req.file.buffer, req.file.size);
+    console.log(`Upload block blob ${blobName} successfully`, uploadBlobResponse.requestId);
+    
     res.send(`File uploaded to Azure Blob storage as blob: ${blobName}`);
 });
 
-app.listen(3000, function () {
+app.listen(8080, function () {
     console.log('App listening on port 3000!');
+});
+
+app.use(function (err, req, res, next) {
+    console.error(err.stack);
+    res.status(500).send('Server error');
 });
