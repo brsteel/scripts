@@ -1,15 +1,12 @@
 {
-    "urllist": ["https://portal.azure.com", "http://www.google.com"],
-    "count": 100,
+    "urlList": ["https://portal.azure.us"],
+    "count": 5,
     "responseTimeout": 5,
-    "myipsite": "https://myipaddressandfileupload.azurewebsites.us/",
-    "skipTracertTest": false,
+    "myIpSite": "https://myipaddressandfileupload.azurewebsites.us/",
+    "skipTracertTest": true,
     "skipTestNetconnection": false,
     "skipResponseTimeTest": false,
     "$skipNslookupTest": false,
     "skipUploadFile": false,
-    "storageAccountName": "brookesteelesa",
-    "sasToken": "sp=c&st=2024-02-09T18:06:30Z&se=2024-02-16T02:06:30Z&skoid=7aaceb55-da12-4562-8d0d-a9ad4038dc3f&sktid=7f59db05-b34e-432e-a39f-7f2051cd8e48&skt=2024-02-09T18:06:30Z&ske=2024-02-16T02:06:30Z&sks=b&skv=2022-11-02&spr=https&sv=2022-11-02&sr=c&sig=NHL87iBaFSvBRQ8CBOy%2FZz6EuTzOIbV7DWXGYheo%2Fbk%3D",
-    "endPointSuffix": "core.usgovcloudapi.net",
-    "containerName": "networktest"
+    "sasUrl": "https://brookesteelesa.blob.core.usgovcloudapi.net/networktest?sp=racwl&st=2024-02-21T03:02:27Z&se=2024-02-21T11:02:27Z&spr=https&sv=2022-11-02&sr=c&sig=y%2BsBu5FN0slRWsRIxr1Wo14ktUF5qlujCeskJU73vaQ%3D"
 }

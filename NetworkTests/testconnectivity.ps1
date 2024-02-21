@@ -2,21 +2,16 @@
 $parameters = Get-Content -Path 'params.json' | ConvertFrom-Json
 
 # Assign the parameters to variables
-$urllist = $parameters.urllist
+$urlList = $parameters.urllist
 $count = $parameters.count
 $responseTimeout = $parameters.responseTimeout
-$myipsite = $parameters.myipsite
+$myIpSite = $parameters.myipsite
 $skipTracertTest = $parameters.skipTracertTest
 $skipResponseTimeTest = $parameters.skipResponseTimeTest
 $skipUploadFile = $parameters.skipUploadFile
 $skipNslookupTest = $parameters.skipNslookupTest
-$storageAccountName = $parameters.storageAccountName
-$endPointSuffix = $parameters.endPointSuffix
-$containerName = $parameters.containerName
-$sasToken = $parameters.sasToken
+$sasUrl = $parameters.sasUrl
 
-#add upload to the URI string
-$uriupload = "$($uri)upload/"
 # Set the timeout to milliseconds for the response time test
 $responseTimeout = $responseTimeout * 1000
 
@@ -24,59 +19,66 @@ $responseTimeout = $responseTimeout * 1000
 $localIpAddress = Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike "169.*" -and $_.IPAddress -notlike "127.*" } | Select-Object -ExpandProperty IPAddress
 
 #get the IP address that connects to the website (SNATE IP) if client is being NATed
-$snatIpAddress = Invoke-WebRequest -Uri $myipsite
+$snatIpAddress = Invoke-WebRequest -Uri $myIpSite
 $snatIpAddress = $snatIpAddress -match '\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b' | Out-Null
 $snatIpAddress = $matches[0]
+$uriUpload = $myIpSite + "/upload/"
 
-#prep the connection string for the Azure Storage Account
-$connectionStringTemplate = "BlobEndpoint=https://{0}.blob.{1}/;SharedAccessSignature={2}"
-$connectionString = $connectionStringTemplate -f $storageAccountName, $endPointSuffix, $sasToken
-
-# Encode the connection string and container name
-$encodedConnectionString = [System.Web.HttpUtility]::UrlEncode($connectionString)
-$encodedContainerName = [System.Web.HttpUtility]::UrlEncode($containerName)
-
-# Append the connection string and container name to the URI
-$uri = "$($uriupload)?connectionString=$($encodedConnectionString)&containerName=$($encodedContainerName)"
-
-function logOutput {
+function UploadFile {
     param(
         [Parameter(Mandatory=$true)]
-        [PSObject]$OutputObject,
+        [string]$sasUrl,
 
         [Parameter(Mandatory=$true)]
         [string]$logFile
     )
 
-    # Convert the object to JSON and write it to the log file
-    $OutputObject | ConvertTo-Json | Out-File -Append -FilePath $logFile
-}
+    if (-not (Test-Path -Path $logFile)) {
+        Write-Error "File $logFile does not exist."
+        return
+    }
 
-function uploadFile {
-    param(
-        [Parameter(Mandatory=$true)]
-        [string]$uri,
+    $fileContent = Get-Content -Path $logFile -Raw
 
-        [Parameter(Mandatory=$true)]
-        [string]$fileToUpload
-    )
+    try {
+        $headers = @{
+            'x-ms-blob-type' = 'BlockBlob'
+        }
 
-    # Create a multipart/form-data content
-    Add-Type -AssemblyName System.Net.Http
-    $multipartContent = New-Object System.Net.Http.MultipartFormDataContent
-    $fileStream = [System.IO.FileStream]::new($fileToUpload, [System.IO.FileMode]::Open)
-    $fileHeader = New-Object System.Net.Http.Headers.ContentDispositionHeaderValue("form-data")
-    $fileHeader.Name = "networktest"
-    $fileHeader.FileName = [System.IO.Path]::GetFileName($fileToUpload)
-    $fileContent = New-Object System.Net.Http.StreamContent($fileStream)
-    $fileContent.Headers.ContentDisposition = $fileHeader
-    $fileContent.Headers.ContentType = New-Object System.Net.Http.Headers.MediaTypeHeaderValue("application/octet-stream")
-    $multipartContent.Add($fileContent)
-    # Send the POST request
-    $httpClient = New-Object System.Net.Http.HttpClient
-    $response = $httpClient.PostAsync($uri, $multipartContent).Result
-    # Output the response
-    $response
+        # Split the SAS URL into the base URL and the SAS token
+        $urlParts = $sasUrl -split '\?'
+
+        $rawBlobName = Split-Path -Path $logFile -Leaf
+        
+        # Get the current date and time
+        $currentDateTime = Get-Date -Format "yyyyMMdd_HHmmss"
+
+        # Get the file extension
+        $fileExtension = [IO.Path]::GetExtension($rawBlobName)
+
+        # Get the filename without the extension
+        $filenameWithoutExtension = [IO.Path]::GetFileNameWithoutExtension($rawBlobName)
+
+        # Create the new filename by appending the date and time
+        $blobName = "$filenameWithoutExtension-$currentDateTime$fileExtension"
+
+        # Construct the blob URL by including the blob name in the base URL
+        $blobUrl = "$($urlParts[0])/$($blobName)?$($urlParts[1])"
+
+        Write-Output $blobUrl
+        $response = Invoke-WebRequest -Uri $blobUrl -Method Put -Body $fileContent -ContentType 'application/octet-stream' -Headers $headers
+
+        Write-Output $response
+
+        if ($response.StatusCode -eq 201) {
+            Write-Output "File uploaded successfully."
+        } else {
+            Write-Error "Failed to upload file. Status code: $($response.StatusCode)"
+        }
+    }
+    catch {
+        Write-Error "Failed to upload file: $_"
+    }
 }
 function performNslookup {
     param(
@@ -91,8 +93,6 @@ function performNslookup {
         #output the target name to the console
         Write-Output "Target: $hostName"
         
-        #setup logFile location
-        $logFile = "$env:USERPROFILE\Documents\NetworkTests-$hostname.log"
         #clean up any old log file with the same name
         if (Test-Path $logFile) { Remove-Item $logFile }
         
@@ -125,7 +125,8 @@ function performNslookup {
         $outputObject | Add-Member -Type NoteProperty -Name "Authoritative DNS Server" -Value $server
         $outputObject | Add-Member -Type NoteProperty -Name "DNS Server Address" -Value $address
         # Log the output
-        logOutput -OutputObject $outputObject -logFile $logFile
+        $OutputObject | ConvertTo-Json | Out-File -Append -FilePath $logFile
+            <# Action to perform. You can use $ to reference the current instance of this class #>
 }
 function performTracertTest {
     param(
@@ -161,7 +162,7 @@ function performTracertTest {
                 $counter++
             }
             # Log the output
-            logOutput -OutputObject $outputObject -logFile $logFile
+            $OutputObject | ConvertTo-Json | Out-File -Append -FilePath $logFile
 }   
 function performTestNetconnection {
     param(
@@ -170,6 +171,12 @@ function performTestNetconnection {
         [Parameter(Mandatory=$true)]
         [string]$logFile
     )
+    
+    Write-Output "Testing network connection to $hostName on port 443."
+    Write-Output "There is a known issue with the Test-NetConnection cmdLet that will keep its progress bar displaying persistently throughout the script. This does not affect the script's functionality."
+    
+    Start-Sleep 3
+
     #perform test-netconnection to target on port 443
     $testNetconnectionResult = Test-NetConnection -ComputerName $hostName -Port 443
 
@@ -183,7 +190,7 @@ function performTestNetconnection {
     }
 
     # Log the output
-    logOutput -OutputObject $outputObject -logFile $logFile
+    $OutputObject | ConvertTo-Json | Out-File -Append -FilePath $logFile
 
     if ($testNetconnectionResult.TcpTestSucceeded -eq $false)
     {
@@ -242,11 +249,18 @@ function performResponseTimeTest {
         $responseCount--
     }
     # Log the output
-    logOutput -OutputObject $outputObject -logFile $logFile
+    $OutputObject | ConvertTo-Json | Out-File -Append -FilePath $logFile
 }   
 
 foreach ($url in $urllist) 
 {
+
+    #extract the hostname from the URL
+    $tempObj = New-Object System.Uri($url)
+    $hostname = $tempObj.Host
+
+    #setup logFile location
+    $logFile = "$env:USERPROFILE\Documents\NetworkTests-$hostname.log"
 
     if (!$skipTestNetconnection) 
     {
@@ -270,7 +284,26 @@ foreach ($url in $urllist)
 }
 
 if (!$skipUploadFile) {
-# Upload the log file unless skipped
-Write-Output "Uploading log file to Azure Storage Account"
-uploadFile -uri $uri -fileToUpload $logFile
+    # Upload the log file unless skipped
+    Write-Output "Uploading log file $logFile to Azure Storage Account"
+    if (Test-Path $logFile) {
+        Write-Output "Log file exists"
+        $response = UploadFile -sasUrl $sasUrl -logFile $logFile
+    }
+    else {
+        Write-Output "Log file does not exist"
+    }
+    
+    if ($response.StatusCode -ne "201") {
+        Write-Output $response
+        Write-Output "Failed to upload log file to Azure Storage Account"
+        Write-Output "Response status code: $($response.StatusCode)"
+        Write-Output "Response status description: $($response.StatusDescription)"
+        Write-Output "Response content: $($response.Content)"
+        exit
+    }
+    else 
+    {
+        Write-Output "$logFile uploaded to Azure Storage Account"
+    }
 }
