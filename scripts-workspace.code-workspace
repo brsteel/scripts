@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"name": "data-science-from-scratch",
+			"path": "../data-science-from-scratch"
+		}
+	],
+	"settings": {
+		"powershell.cwd": "Scripts"
+	}
+}
