@@ -1,0 +1,30 @@
+{
+    "_comments": {
+        "urlList": "Defines HTTPS urls that are to be tested against. The script expects port 443 to be used in the testing, so HTTPS is required.",
+        "count": "Defines the number of times to test each url for invoke-webrequests, the script times the reponse times to determine an extimated latency for connectivity to the site",
+        "responseTimeout": "Defines the timeout for the invoke-webrequest command",
+        "startMtuSize": "Defines the starting MTU size for the ping -f -l command in the script, this will increment by 10 until the packet hits fragmentation.",
+        "myIpSite": "Defines the site to use to determine the public IP address of the client running the script",
+        "skipTracertTest": "Defines whether or not to skip the tracert test",
+        "tracertCount": "Defines the number of hops to test in the tracert test",
+        "skipTestNetconnection": "Defines whether or not to skip the test-netconnection test",
+        "skipResponseTimeTest": "Defines whether or not to skip the invoke-webrequest test",
+        "skipNslookupTest": "Defines whether or not to skip the nslookup test",
+        "skipUploadFile": "Defines whether or not to skip the file upload to a storage blob",
+        "skipMtuSizeTest": "Defines whether or not to skip the MTU size test",
+        "sasUrl": "Defines the SAS URL for the storage blob to upload the file into"
+    },
+    "urlList": ["https://portal.azure.us"],
+    "count": 5,
+    "responseTimeout": 5,
+    "startMtuSize": 1400,
+    "myIpSite": "https://myipaddressandfileupload.azurewebsites.us/",
+    "skipTracertTest": false,
+    "tracertCount": 20,
+    "skipTestNetconnection": false,
+    "skipResponseTimeTest": false,
+    "skipNslookupTest": false,
+    "skipUploadFile": false,
+    "skipMtuSizeTest": false,
+    "sasUrl": "https://brookesteelesa.blob.core.usgovcloudapi.net/networktest?sp=racwd&st=2024-02-24T04:09:45Z&se=2024-02-24T12:09:45Z&spr=https&sv=2022-11-02&sr=c&sig=449cup%2BB41Vknde5R0AQ9qEnWkswMWZHpznKFvFZJw8%3D"
+}
