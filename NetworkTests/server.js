@@ -1,9 +1,5 @@
 const https = require('https');
 const express = require('express');
-//const multer  = require('multer');
-//const inMemoryStorage = multer.memoryStorage();
-//const upload = multer({ storage: inMemoryStorage });
-//const { BlockBlobClient } = require('@azure/storage-blob');
 const path = require('path');
 const app = express();
 
