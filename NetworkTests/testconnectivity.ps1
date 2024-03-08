@@ -328,28 +328,29 @@ foreach ($url in $urllist)
     if (!$skipMtuSizeTest) 
     {
         testMtuSize -Destination $hostname -StartMtuSize $startMtuSize
-    }   
+    }
+    if (!$skipUploadFile) {
+        # Upload the log file unless skipped
+        Write-Output "Uploading log file $logFile to Azure Storage Account"
+        if (Test-Path $logFile) {
+            $response = UploadFile -sasUrl $sasUrl -logFile $logFile
+        }
+        else {
+            Write-Output "Log file does not exist"
+        }
+        
+        if ($response.StatusCode -ne "201") {
+            Write-Output $response
+            Write-Output "Failed to upload log file to Azure Storage Account"
+            Write-Output "Response status code: $($response.StatusCode)"
+            Write-Output "Response status description: $($response.StatusDescription)"
+            Write-Output "Response content: $($response.Content)"
+            exit
+        }
+        else 
+        {
+            Write-Output "$logFile uploaded to Azure Storage Account"
+        }
+    } 
 }
-if (!$skipUploadFile) {
-    # Upload the log file unless skipped
-    Write-Output "Uploading log file $logFile to Azure Storage Account"
-    if (Test-Path $logFile) {
-        $response = UploadFile -sasUrl $sasUrl -logFile $logFile
-    }
-    else {
-        Write-Output "Log file does not exist"
-    }
-    
-    if ($response.StatusCode -ne "201") {
-        Write-Output $response
-        Write-Output "Failed to upload log file to Azure Storage Account"
-        Write-Output "Response status code: $($response.StatusCode)"
-        Write-Output "Response status description: $($response.StatusDescription)"
-        Write-Output "Response content: $($response.Content)"
-        exit
-    }
-    else 
-    {
-        Write-Output "$logFile uploaded to Azure Storage Account"
-    }
-}
+
