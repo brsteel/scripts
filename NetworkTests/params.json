@@ -26,5 +26,5 @@
     "skipNslookupTest": false,
     "skipUploadFile": false,
     "skipMtuSizeTest": false,
-    "sasUrl": "https://brookesteelesa.blob.core.usgovcloudapi.net/networktest?sp=racw&st=2024-03-07T00:32:21Z&se=2024-03-15T07:32:21Z&spr=https&sv=2022-11-02&sr=c&sig=lgPeWm3P8jlH8ed4Pe4PBf%2F86cqFPEvs6G5bMAfKl%2Fw%3D"
+    "sasUrl": "blob sas url"
 }
