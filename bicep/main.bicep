@@ -1,11 +1,9 @@
-resource storageAccount 'Microsoft.Storage/storageAccounts@2019-06-01' = {
-  name: 'toylaunchbrookesteele'
-  location: 'eastus'
-  sku: {
-    name: 'Standard_LRS'
-  }
-  kind:'StorageV2'
-  properties: {
-    accessTier: 'Hot' 
-  }
+param resourceGroupId string
+param location string
+
+targetScope = 'subscription'
+
+resource deleteResourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
+  resourceId: resourceGroupId
+  location: location
 }

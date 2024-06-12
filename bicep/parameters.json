@@ -1,0 +1,13 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "resourceGroupId": {
+        "value": "/subscriptions/3a8f043c-c15c-4a67-9410-a585a85f2109/resourceGroups/bws-0-rg-controlPlane-avd-prod-va"
+      },
+      "location": {
+        "value": "usgovvirginia"
+      }
+    }
+  }
+  
