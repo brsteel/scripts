@@ -1,12 +1,10 @@
 targetScope = 'subscription'
-param resourceGroupName string
-param resourceGroupLocation string
 
-resource exrResourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
+param location string
+param resourceGroupName string
+
+resource resourceGroup 'Microsoft.Resources/resourceGroups@2020-10-01' = {
   name: resourceGroupName
-  location: resourceGroupLocation
+  location: location
 }
 
-output resourceGroupId string = exrResourceGroup.id
-output resourceGroupName string = exrResourceGroup.name
-output resourceGroupLocation string = exrResourceGroup.location

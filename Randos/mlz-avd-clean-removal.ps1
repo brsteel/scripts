@@ -1,15 +1,25 @@
+[cmdletbinding()]
+param (
+    [string]$azureEnvironment = "AzureUSGovernment",
+    [string]$avdSubscriptionName = "mlz-iac-tier3",
+    [string]$mlzHubSubscriptionName = "mlz-iac-hub",
+    [string]$avdIdentifier = "bws",
+    [string]$avdStampIndex = "0",
+    [string]$avdDeploymentDesc = "dev",
+    [string]$avdDeploymentLocation = "va",
+    [string]$avdArtifactsResourceId = "/subscriptions/6d2cdf2f-3fbe-4679-95ba-4e8b7d9aed24/resourceGroups/bws-rg-network-operations-prod-va/providers/Microsoft.Storage/storageAccounts/bwsstopsprodva"
+    [bool]$finalAvdStamp = $false
+)
 
-$azureEnvironment = "AzureUSGovernment"
-$avdSubscriptionName = "mlz-iac-tier3"
-$mlzHubSubscriptionName = "mlz-iac-hub"
-$avdIdentifier = "bws"
-$avdStampIndex = "0"
-$avdDeploymentDesc = "test"
-$avdDeploymentLocation = "va"
-$avdArtifactsResourceId = "/subscriptions/6d2cdf2f-3fbe-4679-95ba-4e8b7d9aed24/resourceGroups/bws-rg-network-operations-prod-va/providers/Microsoft.Storage/storageAccounts/bwsstopsprodva"
-
-$avdSubscriptionId = (Get-AzSubscription -SubscriptionName $avdSubscriptionName).Id
-$azureManagementEndpointUrl = (Get-AzEnvironment -Name $azureEnvironment).ResourceManagerUrl
+#$azureEnvironment = "AzureUSGovernment"
+#$avdSubscriptionName = "mlz-iac-tier3"
+#$mlzHubSubscriptionName = "mlz-iac-hub"
+#$avdIdentifier = "bws"
+#$avdStampIndex = "0"
+#$avdDeploymentDesc = "dev"
+#$avdDeploymentLocation = "va"
+#$avdArtifactsResourceId = "/subscriptions/6d2cdf2f-3fbe-4679-95ba-4e8b7d9aed24/resourceGroups/bws-rg-network-operations-prod-va/providers/Microsoft.Storage/storageAccounts/bwsstopsprodva"
+#$finalAvdStamp = $false
 
 #derive resource names
 $avdControlPlaneRgName = "$avdIdentifier-$avdStampIndex-rg-controlPlane-avd-$avdDeploymentDesc-$avdDeploymentLocation"
@@ -34,36 +44,43 @@ $avdArtifactsRgName = $avdArtifactResourceIdParts[4]
 $avdArtifactsStorageAccountName = $avdArtifactResourceIdParts[8]
 $avdArtifactsResourceGroupResourceId = "/subscriptions/$avdArtifactsSubscriptionId/resourceGroups/$avdArtifactsRgName"
 
-Connect-AzAccount -Environment $azureEnvironment -Subscription $avdSubscriptionName
-
-#find global workspace rg
-$subscriptionList = Get-AzSubscription 
-Foreach ($subscription in $subscriptionList){
-    Select-AzSubscription -SubscriptionId $subscription.Id    
-    $avdGlobalWorkspaceRgObj = Get-AzResourceGroup | Where-Object {$_.ResourceGroupName -like "*$avdGlobalWorkspaceRgName*"}
-    If ($avdGlobalWorkspaceRgObj -ne $null){
-        $avdGlobalWorkspaceRgSubscriptionId = $subscription.Id
-        break
-    }
+$connected = Connect-AzAccount -Environment $azureEnvironment -Subscription $avdSubscriptionName
+if (-not $connected) {
+    Write-Error "Failed to connect to Azure"
 }
+else {
+    Write-Host "Connected to Azure"
 
-function Remove-RoleAssignment {
+    $avdSubscriptionId = (Get-AzSubscription -SubscriptionName $avdSubscriptionName).Id
+    $azureManagementEndpointUrl = (Get-AzEnvironment -Name $azureEnvironment).ResourceManagerUrl
+
+    #find global workspace rg
+    $subscriptionList = Get-AzSubscription 
+    Foreach ($subscription in $subscriptionList){
+        Select-AzSubscription -SubscriptionId $subscription.Id    
+        $avdGlobalWorkspaceRgObj = Get-AzResourceGroup | Where-Object {$_.ResourceGroupName -like "*$avdGlobalWorkspaceRgName*"}
+        If ($avdGlobalWorkspaceRgObj -ne $null){
+            $avdGlobalWorkspaceRgSubscriptionId = $subscription.Id
+            Write-Host "Global Workspace Resource Group named: $avdGlobalWorkspaceRgObj found in subscription named:" $subscription.Name
+            break
+        }
+    }
+
+    function Remove-RoleAssignment {
   param (
-    $objectId,
-    $resourceGroup,
-    $scope,
-    $subscriptionId
+    $ObjectId,
+    $SubscriptionId
   )
 
   Select-AzSubscription $SubscriptionId
-  $roleAssignment = Get-AzRoleAssignment -ObjectId $objectId -ResourceGroupName $ResourceGroup | Remove-AzRoleAssignment
-}
+  $roleAssignment = Get-AzRoleAssignment -ObjectId $objectId | Remove-AzRoleAssignment
+    }
 
-function Remove-Dcr {
+    function Remove-Dcr {
   param (
-    $dcrName,
-    $resourceGroup,
-    $subscriptionId
+    $DcrName,
+    $ResourceGroup,
+    $SubscriptionId
   )
 
   Select-AzSubscription $SubscriptionId
@@ -75,15 +92,15 @@ function Remove-Dcr {
   }
   Remove-AzDataCollectionRule -DataCollectionRuleName $DcrToDelete.Name -ResourceGroupName $ResourceGroup
   #Finish
-}
+    }
 
-function Remove-Rsv {
+    function Remove-Rsv {
   param (
-    $vaultName,
-    $subscription,
-    $resourceGroup,
-    $subscriptionId,
-    $azureManagementEndpointUrl
+    $VaultName,
+    $Subscription,
+    $ResourceGroup,
+    $SubscriptionId,
+    $AzureManagementEndpointUrl
   )
 
   Select-AzSubscription $SubscriptionId
@@ -148,27 +165,71 @@ function Remove-Rsv {
   Write-Host "Recovery Services Vault" $VaultName "successfully deleted"
   }
   #Finish
+    }
+
+    Write-Host "Moving to the AVD Subscription named: $avdSubscriptionName"
+    Select-AzSubscription $avdSubscriptionId
+
+    Write-Host "Looking for an Azure Recovery Services Vault named: $avdRsvName in the Resource Group named: $avdManagementRgName. If found, it will be deleted."
+    $rsv = Get-AzRecoveryServicesVault -Name $avdRsvName -ResourceGroupName $avdManagementRgName -ErrorAction 'silentlycontinue'
+    if ($rsv -ne $null){
+      Remove-Rsv -VaultName $avdRsvName -ResourceGroup $avdManagementRgName -SubscriptionId $avdSubscriptionId -AzureManagementEndpointUrl $azureManagementEndpointUrl
+    }
+
+    Write-Host "Looking for a Data Collection Rule named: $avdDcrName in the Resource Group named: $avdManagementRgName. If found, it will be deleted."
+    $dcr = $dcrToDelete = Get-AzDataCollectionRule -Name $avdDcrName -ResourceGroupName $avdManagementRgName -ErrorAction 'silentlycontinue'
+    if ($dcr -ne $null){
+      Remove-Dcr -DcrName $avdDcrName -ResourceGroup $avdManagementRgName -SubscriptionId $avdSubscriptionId
+    }
+
+    Write-Host "Looking for a Key Vault named: $avdKeyVaultNamePartialName in the Resource Group named: $avdManagementRgName. If found, it will be deleted."
+    #PUT DELETING KEYVAULT CODE HERE
+
+    Write-Host "Removing role assignments for the AVD deployment identity, AVD VM Agent Deploy application, and the AVD artifacts identity."
+    $avdDeployIdentity = Get-AzADServicePrincipal -DisplayName $avdDeployIdentityName
+    Remove-RoleAssignment -ObjectId $avdDeployIdentity.Id -SubscriptionId $avdArtifactsSubscriptionId
+
+    $avdVmDeployAgentsApp = Get-AzAdServicePrincipal -DisplayName $avdVmAgentDeployAppName
+    Remove-RoleAssignment -ObjectId $avdVmDeployAgentsApp.Id -SubscriptionId $avdArtifactsSubscriptionId
+
+    $avdArtifactsIdentity = Get-AzADServicePrincipal -DisplayName $avdArtifactsIdentityName
+    Remove-RoleAssignment -ObjectId $avdArtifactsIdentity.Id -SubscriptionId $avdArtifactsSubscriptionId
+
+    Write-Host "Changing foces back to the AVD Subscription named: $avdSubscriptionName"
+    Select-AzSubscription $avdSubscriptionId
+    
+    Write-Host "Getting the netwwork peering information from the AVD VNet named: $avdVnetName"
+    $avdVnetPeering = Get-AzVirtualNetworkPeering -ResourceGroupName $avdNetworkRgName -VirtualNetworkName $avdVnetName
+    $avdRemotePeerResourceId = ($avdVnetPeering.RemoteVirtualNetworkText | ConvertFrom-Json).Id
+    #break down remote peer resource id
+    $avdRemotePeerResourceIdParts = $avdRemotePeerResourceId.Split("/")
+    $avdRemotePeerSubscriptionId = $avdRemotePeerResourceIdParts[2]
+    $avdRemotePeerRgName = $avdRemotePeerResourceIdParts[4]
+    $avdRemotePeerVnetName = $avdRemotePeerResourceIdParts[8]
+    
+    Write-Host "Connecting to the subscription that contains the peered hub connection."
+    Select-AzSubscription -SubscriptionId $avdRemotePeerSubscriptionId
+    
+    Write-Host "Removing the peering connection from the remote peer VNet named: $avdRemotePeerVnetName to the AVD VNet named: $avdVnetName"
+    $avdRemotePeering = Get-AzVirtualNetworkPeering -ResourceGroupName $avdRemotePeerRgName -VirtualNetworkName $avdRemotePeerVnetName
+    foreach ($peering in $avdRemotePeering){
+        if ($peering.Name -like "to-$avdVnetName"){
+            Remove-AzVirtualNetworkPeering -ResourceGroupName $avdRemotePeerRgName -VirtualNetworkName $avdRemotePeerVnetName -Name $peering.Name -Force
+        }
+    }
+
+    Write-Host "Changing back to the AVD Subscription named: $avdSubscriptionName"
+    Select-AzSubscription -SubscriptionId $avdSubscriptionId
+
+    Write-Host "Removing the Resource Groups"
+    $avdRgList = @($avdControlPlaneRgName, $avdManagementRgName, $avdGlobalWorkspaceRgName, $avdFeedWorkspaceRgName, $avdHostsRgName, $avdNetworkRgName)
+    foreach ($rg in $avdRgList){
+        if ($rg -ne "$avdGlobalWorkspaceRgName"){
+          Select-AzSubscription -SubscriptionId $avdSubscriptionId
+          Remove-AzResourceGroup -Name $rg -Force
+        }
+        else {
+          Write-Host "This is not the final AVD stamp. The global workspace resource group will not be deleted."
+        }
+      }
 }
-
-
-
-Remove-Rsv -vaultName $avdRsvName -resourceGroup $avdManagementRgName -subscriptionId $avdSubscriptionId -azureManagementEndpointUrl $azureManagementEndpointUrl
-Remove-Dcr -subscriptionId $avdSubscriptionId -dcrName $avdDcrName -resourceGroup $avdManagementRgName
-
-$avdDeployIdentity = Get-AzADServicePrincipal -DisplayName $avdDeployIdentityName
-Remove-RoleAssignment -ObjectId $avdDeployIdentity.Id -ResourceGroup $avdArtifactsRgName -SubscriptionId $avdArtifactsSubscriptionId -Scope $avdArtifactsResourceGroupResourceId
-
-$avdVmDeployAgentsApp = Get-AzAdServicePrincipal -DisplayName $avdVmAgentDeployAppName
-Remove-RoleAssignment -ObjectId $avdVmDeployAgentsApp.Id -ResourceGroup $avdArtifactsRgName -SubscriptionId $avdArtifactsSubscriptionId -Scope $avdArtifactsResourceGroupResourceId
-
-Select-AzSubscription -SubscriptionId $avdSubscriptionId
-$avdRgList = @($avdControlPlaneRgName, $avdManagementRgName, $avdGlobalWorkspaceRgName, $avdFeedWorkspaceRgName, $avdHostsRgName, $avdNetworkRgName)
-foreach ($rg in $avdRgList){
-    if ($rg -ne "$avdGlobalWorkspaceRgName"){
-      Remove-AzResourceGroup -Name $rg -Force
-    }
-    else {
-      Select-AzSubscription -SubscriptionId $avdGlobalWorkspaceRgSubscriptionId
-      Remove-AzResourceGroup -Name $rg -Force
-    }
-  }
