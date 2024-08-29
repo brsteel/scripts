@@ -1,192 +1,122 @@
-param location string
-param publicIPAddressName string
-param publicIPAddressSku string
-param publicIPAddressAllocationMethod string
-param vpnGatewayName string
-param vpnType string
-param vpnGatewaySku string
-param azureBgpAsn int?
-param connectionId string
-param connectionName string
-param connectionBandwidth int
-param dpdTimeoutSeconds int
-param enableBgp bool
-param enableInternetSecurity bool
-param enableRateLimiting bool
-param ipsecPolicies array
-param remoteVpnSiteId string
-param associatedRouteTableId string
-param inboundRouteMapId string
-param outboundRouteMapId string
-param propagatedRouteTableId string
-param propagatedRouteTableLabel string
-param staticRouteAddressPrefix string
-param staticRouteName string
-param staticRouteNextHopIpAddress string
-param vnetLocalRouteOverrideCriteria string
-param routingWeight int
-param sharedKey string
-param trafficSelectorPolicies array
-param useLocalAzureIpAddress bool
-param usePolicyBasedTrafficSelectors bool
-param vpnConnectionProtocolType string
-param vpnLinkConnections array
-param enableBgpRouteTranslationForNat bool
-param isRoutingPreferenceInternet bool
-param natRules array
-param virtualHubId string
-param vpnGatewayScaleUnit int
-param localNetworkGatewayName string
-param localNetworkGatewayIpAddress string
-param localNetworkGatewayAddressPrefix string
-param onPremisesBgpAsn int?
-param ipsecHash object?
+param name string
+param location string = resourceGroup().location
+param gatewayType string
+param publicIpAddressSku string = 'Standard'
 
-resource publicIPAddress 'Microsoft.Network/publicIPAddresses@2023-04-01' = {
-  name: publicIPAddressName
-  location: location
-  sku: {
-    name: publicIPAddressSku
-  }
+// public ip address names can be auto generated using the naming generator in MLZ  so this is temporary for testing purposes
+param publicIpAddressNames array
+param vpnType string
+param vpnGatewayGeneration string
+param sku string
+param vnetName string
+param localNetworkGatewayName string
+param gatewayIpAddress string
+param addressPrefixes array
+param sharedKey string = ''
+param keyVaultCertificateUri string = ''
+
+// Existing Virtual Network and Subnet
+resource vnet 'Microsoft.Network/virtualNetworks@2023-02-01' existing = {
+  name: vnetName
+}
+
+var gatewaySubnetExists = contains(vnet.properties.subnets, 'GatewaySubnet')
+
+resource gatewaySubnet 'Microsoft.Network/virtualNetworks/subnets@2023-04-01' if (!gatewaySubnetExists) = {
+  parent: vnet
+  name: 'GatewaySubnet'
   properties: {
-    publicIPAllocationMethod: publicIPAddressAllocationMethod
+    addressPrefix: gatewaySubnetAddressPrefix
   }
 }
 
-resource vpnGateway 'Microsoft.Network/vpnGateways@2023-11-01' = {
-  name: vpnGatewayName
+var gatewaySubnetId = gatewaySubnet.id
+
+// Public IP Addresses
+resource publicIpAddresses 'Microsoft.Network/publicIPAddresses@2023-02-01' = [for (name, index) in publicIpAddressNames: {
+  name: name
+  location: location
+  sku: {
+    name: publicIpAddressSku
+  }
+  properties: {
+    publicIPAllocationMethod: 'Static'
+  }
+  zones: [
+    '1'
+    '2'
+    '3'
+  ]
+}]
+
+var firstPublicIpAddressId = publicIpAddresses[0].id
+var secondPublicIpAddressId = publicIpAddresses[1].id
+
+// VPN Gateway
+resource vpnGateway 'Microsoft.Network/virtualNetworkGateways@2023-02-01' = {
+  name: name
   location: location
   properties: {
-    bgpSettings: azureBgpAsn != null ? {
-      asn: azureBgpAsn
-    } : null
-    connections: [
+    gatewayType: gatewayType
+    ipConfigurations: [
       {
-        id: connectionId
-        name: connectionName
+        name: 'default'
         properties: {
-          connectionBandwidth: connectionBandwidth
-          dpdTimeoutSeconds: dpdTimeoutSeconds
-          enableBgp: enableBgp
-          enableInternetSecurity: enableInternetSecurity
-          enableRateLimiting: enableRateLimiting
-          ipsecPolicies: ipsecPolicies
-          remoteVpnSite: {
-            id: remoteVpnSiteId
+          privateIPAllocationMethod: 'Dynamic'
+          subnet: {
+            id: gatewaySubnetId
           }
-          routingConfiguration: {
-            associatedRouteTable: {
-              id: associatedRouteTableId
-            }
-            inboundRouteMap: {
-              id: inboundRouteMapId
-            }
-            outboundRouteMap: {
-              id: outboundRouteMapId
-            }
-            propagatedRouteTables: {
-              ids: [
-                {
-                  id: propagatedRouteTableId
-                }
-              ]
-              labels: [
-                propagatedRouteTableLabel
-              ]
-            }
-            vnetRoutes: {
-              staticRoutes: [
-                {
-                  addressPrefixes: [
-                    staticRouteAddressPrefix
-                  ]
-                  name: staticRouteName
-                  nextHopIpAddress: staticRouteNextHopIpAddress
-                }
-              ]
-              staticRoutesConfig: {
-                vnetLocalRouteOverrideCriteria: vnetLocalRouteOverrideCriteria
-              }
-            }
+          publicIPAddress: {
+            id: firstPublicIpAddressId
           }
-          routingWeight: routingWeight
-          sharedKey: sharedKey
-          trafficSelectorPolicies: trafficSelectorPolicies
-          useLocalAzureIpAddress: useLocalAzureIpAddress
-          usePolicyBasedTrafficSelectors: usePolicyBasedTrafficSelectors
-          vpnConnectionProtocolType: vpnConnectionProtocolType
-          vpnLinkConnections: vpnLinkConnections
+        }
+      }
+      {
+        name: 'activeActive'
+        properties: {
+          privateIPAllocationMethod: 'Dynamic'
+          publicIPAddress: {
+            id: secondPublicIpAddressId
+          }
+          subnet: {
+            id: gatewaySubnetId
+          }
         }
       }
     ]
-    enableBgpRouteTranslationForNat: enableBgpRouteTranslationForNat
-    isRoutingPreferenceInternet: isRoutingPreferenceInternet
-    natRules: natRules
-    virtualHub: {
-      id: virtualHubId
+    activeActive: true
+    vpnType: vpnType
+    vpnGatewayGeneration: vpnGatewayGeneration
+    sku: {
+      name: sku
+      tier: sku
     }
-    vpnGatewayScaleUnit: vpnGatewayScaleUnit
   }
 }
 
-resource localNetworkGateway 'Microsoft.Network/localNetworkGateways@2023-04-01' = if (onPremisesBgpAsn != null) {
+// Local Network Gateway
+resource localNetworkGateway 'Microsoft.Network/localNetworkGateways@2023-02-01' = {
   name: localNetworkGatewayName
   location: location
   properties: {
-    gatewayIpAddress: localNetworkGatewayIpAddress
+    gatewayIpAddress: gatewayIpAddress
     localNetworkAddressSpace: {
-      addressPrefixes: [
-        localNetworkGatewayAddressPrefix
-      ]
-    }
-    bgpSettings: {
-      asn: onPremisesBgpAsn
-      bgpPeeringAddress: localNetworkGatewayIpAddress
+      addressPrefixes: addressPrefixes
     }
   }
-  dependsOn: [
-    vpnGateway
-  ]
 }
 
-resource vpnConnection 'Microsoft.Network/connections@2023-04-01' = if (azureBgpAsn != null && onPremisesBgpAsn != null) {
-  name: connectionName
-  location: location
-  properties: {
-    connectionType: 'IPsec'
-    virtualNetworkGateway1: {
-      id: vpnGateway.id
-      properties: {
-        vpnType: vpnType
-        enableBgp: azureBgpAsn != null
-        activeActive: false
-        gatewayDefaultSite: null
-        sku: {
-          name: vpnGatewaySku
-          tier: vpnGatewaySku
-        }
-      }
-    }
-    localNetworkGateway2: {
-      id: localNetworkGateway.id
-      properties: {
-        gatewayIpAddress: localNetworkGatewayIpAddress
-        localNetworkAddressSpace: {
-          addressPrefixes: [
-            localNetworkGatewayAddressPrefix
-          ]
-        }
-        bgpSettings: onPremisesBgpAsn != null ? {
-          asn: onPremisesBgpAsn
-          bgpPeeringAddress: localNetworkGatewayIpAddress
-        } : null
-      }
-    }
+// VPN Connection Module
+module vpnConnectionModule 'vpn-connection.bicep' = {
+  name: 'vpnConnectionModule'
+  scope: resourceGroup()
+  params: {
+    vpnConnectionName: '${name}-to-${localNetworkGatewayName}'
+    location: location
+    vpnGatewayName: name
+    vpnGatewayResourceGroupName: resourceGroup().name
     sharedKey: sharedKey
-    enableBgp: true
-    ipsecPolicies: ipsecHash != null ? [ipsecHash] : []
+    keyVaultCertificateUri: keyVaultCertificateUri
+    localNetworkGatewayName: localNetworkGatewayName
   }
 }
-
-output vpnGatewayId string = vpnGateway.id
-output localNetworkGatewayId string = onPremisesBgpAsn != null ? localNetworkGateway.id : ''

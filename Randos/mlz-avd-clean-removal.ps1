@@ -7,7 +7,7 @@ param (
     [string]$avdStampIndex = "0",
     [string]$avdDeploymentDesc = "dev",
     [string]$avdDeploymentLocation = "va",
-    [string]$avdArtifactsResourceId = "/subscriptions/6d2cdf2f-3fbe-4679-95ba-4e8b7d9aed24/resourceGroups/bws-rg-network-operations-prod-va/providers/Microsoft.Storage/storageAccounts/bwsstopsprodva"
+    [string]$avdArtifactsResourceId = "/subscriptions/6d2cdf2f-3fbe-4679-95ba-4e8b7d9aed24/resourceGroups/bws-rg-network-operations-prod-va/providers/Microsoft.Storage/storageAccounts/bwsstopsprodva",
     [bool]$finalAvdStamp = $false
 )
 
@@ -188,6 +188,7 @@ else {
     Write-Host "Removing role assignments for the AVD deployment identity, AVD VM Agent Deploy application, and the AVD artifacts identity."
     $avdDeployIdentity = Get-AzADServicePrincipal -DisplayName $avdDeployIdentityName
     Remove-RoleAssignment -ObjectId $avdDeployIdentity.Id -SubscriptionId $avdArtifactsSubscriptionId
+    Remove-RoleAssignment -ObjectId $avdDeployIdentity.Id -SubscriptionId $avdSubscriptionId
 
     $avdVmDeployAgentsApp = Get-AzAdServicePrincipal -DisplayName $avdVmAgentDeployAppName
     Remove-RoleAssignment -ObjectId $avdVmDeployAgentsApp.Id -SubscriptionId $avdArtifactsSubscriptionId
@@ -229,7 +230,13 @@ else {
           Remove-AzResourceGroup -Name $rg -Force
         }
         else {
-          Write-Host "This is not the final AVD stamp. The global workspace resource group will not be deleted."
-        }
+          if ($finalAvdStamp -eq $true){
+            Select-AzSubscription -SubscriptionId $avdGlobalWorkspaceRgSubscriptionId
+            Remove-AzResourceGroup -Name $rg -Force
+          }
+          else {
+            Write-Host "This is not the final AVD stamp. The global workspace resource group will not be deleted."
+          }
+          }
       }
 }
