@@ -20,17 +20,17 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-02-01' existing = {
   name: vnetName
 }
 
-var gatewaySubnetExists = contains(vnet.properties.subnets, 'GatewaySubnet')
+// Define a variable to store the list of existing subnets
+var subnets = vnet.properties.subnets
 
-resource gatewaySubnet 'Microsoft.Network/virtualNetworks/subnets@2023-04-01' if (!gatewaySubnetExists) = {
-  parent: vnet
-  name: 'GatewaySubnet'
-  properties: {
-    addressPrefix: gatewaySubnetAddressPrefix
-  }
-}
+// Define a variable to store the specified subnet
+var gatewaySubnet = [for s in subnets: if (s.name == 'GatewaySubnet') s][0]
 
-var gatewaySubnetId = gatewaySubnet.id
+// Filter the list to find the specified subnet
+var gatewaySubnetExists = !empty(gatewaySubnet)
+
+// Output the subnet ID if it exists
+output gatewaySubnetId string = gatewaySubnetExists ? gatewaySubnet.id : 'GatewaySubnet does not exist on the specified virtual network'
 
 // Public IP Addresses
 resource publicIpAddresses 'Microsoft.Network/publicIPAddresses@2023-02-01' = [for (name, index) in publicIpAddressNames: {
