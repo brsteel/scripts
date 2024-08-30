@@ -8,8 +8,9 @@
   There may be a Keyvault that may stick and not be deleted, this will need to be manually deleted, after the time period has passed, if it was used after the deployment.
   Depending on when the script is run, there may be errors in timing, causing errors to occur. If this happens, wait a few minutes and run the script again.
   Check the subscription(s) in the Azure portal to ensure all resource groups have been deleted, associated with the AVD stamp that was targeted.   
-  If it is the final AVD deployment to be removed, the global workspace resource group will be deleted. If it is not the final AVD deployment, the global workspace resource group will not be deleted.
-  In particular, the script automates the removal of role assignments, recovery services vaults, data collection rules, and key vaults associated with the AVD deployment, which typically can prevent easy deletion of the AVD resource groups.
+  If it is the final AVD deployment to be removed, the global workspace resource group and feed workspace group will be deleted. If it is not the final AVD deployment, the global workspace resource group will not be deleted.
+  In particular, the script automates the removal of role assignments, recovery services vaults, and data collection rules, associated with the AVD deployment, which typically can prevent easy deletion of the AVD resource groups.
+  The one item that cannot be removed is the keyvault.   If the stamp being deleted has been in use and the keyvault was used, it will have to be removed manually based on the time limit.
 
 .PARAMETER azureEnvironment
     The Azure environment to connect to (e.g., AzureCloud, AzureUSGovernment, etc.).
@@ -65,13 +66,16 @@
 
 .REQUIREMENTS
     - Subscription owner permissions in the AVD and MLZ Hub subscriptions.
+    - Global Administrator permissions in the Azure AD tenant, specifically to remove session host device accounts.
     - Azure PowerShell Az module installed on the machine running the script.
     - Correct naming conventions for AVD resources that were deployed as part of the MLZ AVD Addon deployment.
+    - Microsoft.Graph module installed on the machine running the script. (e.g. "Install-Module Microsoft.Graph -Scope AllUsers -Repository PSGallery -Force")
+    - Air gapped clouds have specific requirements for the Microsoft.Graph module.   Specifically, the application must be manually created in the Azure portal within the Tenant.
 
 .TODO
-    - timing of when the script is run can cause errors, need to work on error handling for this.
     - add function to see if keyvault will prevent deletion of resource group that contains it and throw error to inform user to manually delete it after time period has passed.
-
+    - it may be necessary to add section to remove device computer accounts for the stamp session hosts from Entra Id, so a repeated deployment can create new device accounts for the session hosts.
+    - remove the avd artifact storage account and app id, once the add on removes the requirement to use it
 #>
 
 [cmdletbinding()]
@@ -104,6 +108,8 @@
     [bool]$finalAvdStamp = $false
 )
 
+$ErrorActionPreference = "SilentlyContinue"
+
 #derive resource names
 $avdControlPlaneRgName = "$avdIdentifier-$avdStampIndex-rg-controlPlane-avd-$avdDeploymentDesc-$avdDeploymentLocation"
 $avdHostsRgName = "$avdIdentifier-$avdStampIndex-rg-hosts-avd-$avdDeploymentDesc-$avdDeploymentLocation"
@@ -115,10 +121,9 @@ $avdVnetName = "$avdIdentifier-$avdStampIndex-vnet-avd-$avdDeploymentDesc-$avdDe
 $avdVmAgentDeployAppName = "Deploy VM Agents $avdIdentifier-$avdStampIndex-rg-network-avd-$avdDeploymentDesc-$avdDeploymentLocation"
 $avdDeployIdentityName = "$avdIdentifier-$avdStampIndex-id-deployment-avd-$avdDeploymentDesc-$avdDeploymentLocation"
 $avdArtifactsIdentityName = "$avdIdentifier-$avdStampIndex-id-artifacts-avd-$avdDeploymentDesc-$avdDeploymentLocation"
-$avdDcrName = "$avdIdentifier-$avdStampIndex-dcr-avd-$avdDeploymentDesc-$avdDeploymentLocation"
+$avdDcrName = "microsoft-avdi-$avdIdentifier-$avdStampIndex-dcr-avd-$avdDeploymentDesc-$avdDeploymentLocation"
 $avdKeyVaultNamePartialName = "$($avdIdentifier)$($avdStampIndex)kvavd$($avdDeploymentDesc)"
 $avdRsvName = "$avdIdentifier-$avdStampIndex-rsv-avd-$avdDeploymentDesc-$avdDeploymentLocation"
-$avdDcrName = "$avdIdentifier-$avdStampIndex-dcr-avd-$avdDeploymentDesc-$avdDeploymentLocation"
 
 ## break down artifacts resource id
 $avdArtifactResourceIdParts = $avdArtifactsResourceId.Split("/")
@@ -320,17 +325,22 @@ else {
   Write-Host "Removing the Resource Groups"
   $avdRgList = @($avdControlPlaneRgName, $avdManagementRgName, $avdGlobalWorkspaceRgName, $avdFeedWorkspaceRgName, $avdHostsRgName, $avdNetworkRgName)
   foreach ($rg in $avdRgList){
-      if ($rg -ne "$avdGlobalWorkspaceRgName"){
+      if ($rg -ne $avdGlobalWorkspaceRgName -or $rg -ne $avdFeedWorkspaceRgName){
         Select-AzSubscription -SubscriptionId $avdSubscriptionId
         Remove-AzResourceGroup -Name $rg -Force
       }
       else {
         if ($finalAvdStamp -eq $true){
-          Select-AzSubscription -SubscriptionId $avdGlobalWorkspaceRgSubscriptionId
-          Remove-AzResourceGroup -Name $rg -Force
+          if ($rg -eq "$avdGlobalWorkspaceRgName"){
+            Select-AzSubscription -SubscriptionId $avdGlobalWorkspaceRgSubscriptionId
+            Remove-AzResourceGroup -Name $rg -Force
+          }
+          else {
+            Remove-AzResourceGroup -Name $rg -Force
+          }
         }
         else {
-          Write-Host "This is not the final AVD stamp. The global workspace resource group will not be deleted."
+          Write-Host "This is not the final AVD stamp. The global workspace resource group and feed workspace group will not be deleted."
         }
         }
     }
