@@ -20,17 +20,13 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-02-01' existing = {
   name: vnetName
 }
 
-// Define a variable to store the list of existing subnets
-var subnets = vnet.properties.subnets
+// Reference the existing subnet within the specified Virtual Network
+resource gatewaySubnet 'Microsoft.Network/virtualNetworks/subnets@2023-02-01' existing = {
+  parent: vnet
+  name: 'GatewaySubnet'
+}
 
-// Define a variable to store the specified subnet
-var gatewaySubnet = [for s in subnets: if (s.name == 'GatewaySubnet') s][0]
-
-// Filter the list to find the specified subnet
-var gatewaySubnetExists = !empty(gatewaySubnet)
-
-// Output the subnet ID if it exists
-output gatewaySubnetId string = gatewaySubnetExists ? gatewaySubnet.id : 'GatewaySubnet does not exist on the specified virtual network'
+var gatewaySubnetId = gatewaySubnet.id
 
 // Public IP Addresses
 resource publicIpAddresses 'Microsoft.Network/publicIPAddresses@2023-02-01' = [for (name, index) in publicIpAddressNames: {
@@ -42,11 +38,6 @@ resource publicIpAddresses 'Microsoft.Network/publicIPAddresses@2023-02-01' = [f
   properties: {
     publicIPAllocationMethod: 'Static'
   }
-  zones: [
-    '1'
-    '2'
-    '3'
-  ]
 }]
 
 var firstPublicIpAddressId = publicIpAddresses[0].id
@@ -119,4 +110,8 @@ module vpnConnectionModule 'vpn-connection.bicep' = {
     keyVaultCertificateUri: keyVaultCertificateUri
     localNetworkGatewayName: localNetworkGatewayName
   }
+  dependsOn: [
+    vpnGateway
+    localNetworkGateway
+  ]
 }

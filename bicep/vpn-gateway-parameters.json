@@ -6,7 +6,7 @@
       "value": "bws-vnet-hub-dev-va"
     },
     "name": {
-      "value": "bws-vpngw-hub-dev-va"
+      "value": "bws-vgw-hub-dev-va"
     },
     "location": {
       "value": "usgovvirginia"
@@ -16,8 +16,8 @@
     },
     "publicIpAddressNames": {
       "value": [
-        "bws-pip-vpngw-hub-dev-va-1",
-        "bws-pip-vpngw-hub-dev-va-2"
+        "bws-pip-vgw-hub-dev-va-1",
+        "bws-pip-vgw-hub-dev-va-2"
       ]
     },
     "publicIpAddressSku": {
@@ -30,13 +30,13 @@
       "value": "Generation2"
     },
     "sku": {
-      "value": "VpnGw2AZ"
+      "value": "VpnGw2"
     },
     "localNetworkGatewayName": {
-      "value": "bws-lngw-hub-dev-va"
+      "value": "bws-lgw-hub-dev-va"
     },
     "gatewayIpAddress": {
-      "value": "132.16.5.462.10.106.167"
+      "value": "62.10.106.167"
     },
     "addressPrefixes": {
       "value": [
@@ -44,13 +44,10 @@
       ]
     },
     "sharedKey": {
-      "value": "yourSharedKey"
+      "value": "P@ssw0rd"
     },
     "keyVaultCertificateUri": {
       "value": ""
-    },
-    "logAnalyticsWorkspaceResourceId": {
-      "value": "/subscriptions/6d2cdf2f-3fbe-4679-95ba-4e8b7d9aed24/resourceGroups/bws-rg-network-operations-dev-va/providers/Microsoft.OperationalInsights/workspaces/bws-log-operations-dev-va"
     }
   }
 }
