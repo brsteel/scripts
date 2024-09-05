@@ -33,7 +33,7 @@ resource publicIpAddresses 'Microsoft.Network/publicIPAddresses@2023-02-01' = [f
   name: name
   location: location
   sku: {
-    name: publicIpAddressSku
+    name: 'Standard'
   }
   properties: {
     publicIPAllocationMethod: 'Static'
@@ -48,7 +48,7 @@ resource vpnGateway 'Microsoft.Network/virtualNetworkGateways@2023-02-01' = {
   name: name
   location: location
   properties: {
-    gatewayType: gatewayType
+    gatewayType: 'Vpn'
     ipConfigurations: [
       {
         name: 'default'
