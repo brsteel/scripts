@@ -1,11 +1,4 @@
 $Location = 'usgovvirginia'
-$ResourceGroupName = 'mlz-rg-templateSpecs-dev-va'
-$TemplateSpecName = 'ts-avd-dev-va'
-New-AzTemplateSpec `
-    -ResourceGroupName $ResourceGroupName `
-    -Name $TemplateSpecName `
-    -Version 1.0 `
-    -Location $Location `
-    -TemplateFile '.\src\bicep\add-ons\azure-virtual-desktop\solution.json' `
-    -UIFormDefinitionFile '.\src\bicep\add-ons\azure-virtual-desktop\uiDefinition.json' `
-    -Force
+$ResourceGroupName = 'mlz-rg-templateSpecs-az-dev'
+$TemplateSpecName = 'bws-mlz-firewall-rules-mod'
+New-AzTemplateSpec -ResourceGroupName $ResourceGroupName -Name $TemplateSpecName -Version 1.0 -Location $Location -TemplateFile 'C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\mlz.json' -UIFormDefinitionFile 'C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\form\mlz.portal.json' -Force
