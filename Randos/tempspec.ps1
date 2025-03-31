@@ -30,7 +30,7 @@ New-AzTemplateSpec -ResourceGroupName $ResourceGroupName -Name $TemplateSpecName
 
 
 #avd deployment
-az deployment sub create --name bwsdeploy --location usgovvirginia --template-file C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\add-ons\azure-virtual-desktop\solution.bicep --parameters C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\add-ons\azure-virtual-desktop\solution.bicepparam --parameters virtualMachineAdminPassword=$password
+az deployment sub create --name bwsdeployavd --location usgovvirginia --template-file C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\add-ons\azure-virtual-desktop\solution.bicep --parameters C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\add-ons\azure-virtual-desktop\solution.bicepparam --parameters virtualMachineAdminPassword=$password
 
 
 
