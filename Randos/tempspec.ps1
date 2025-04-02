@@ -33,6 +33,14 @@ New-AzTemplateSpec -ResourceGroupName $ResourceGroupName -Name $TemplateSpecName
 az deployment sub create --name bwsdeployavd --location usgovvirginia --template-file C:\Users\brsteel\Documents\repositories\missionlz\missionlz\src\bicep\add-ons\azure-virtual-desktop\solution.bicep --parameters C:\Users\brsteel\Documents\repositories\missionlz\missionlz\src\bicep\add-ons\azure-virtual-desktop\solution.bicepparam --parameters virtualMachineAdminPassword=$password
 
 
+# Prompt the user for a password and wrap it as a secure string
+$sharedkey = Read-Host "Enter your sharedkey" -AsSecureString
+
+# Output to confirm the variable is set (optional, for testing purposes)
+Write-Host "Value has been securely stored in the variable `$sharedkey`."
+
+az deployment sub create --name bwsdeployvgw --location usgovvirginia --template-file C:\Users\brsteel\Documents\repositories\missionlz\missionlz\src\bicep\add-ons\virtual-network-gateway\solution.bicep --parameters C:\Users\brsteel\Documents\repositories\missionlz\missionlz\src\bicep\add-ons\virtual-network-gateway\solution.bicepparam --parameters sharedKey=$sharedkey
+
 
 
 
