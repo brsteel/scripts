@@ -1,0 +1,2 @@
+az vm run-command list --vm-name "fw10vmmgtvad" --resource-group "fw1-0-rg-avd-management-va-dev"
+az vm run-command show --name "Update-AvdDesktop" --vm-name "fw10vmmgtvad" --resource-group "fw1-0-rg-avd-management-va-dev" --expand instanceView
