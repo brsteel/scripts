@@ -1,25 +1,47 @@
-$resourceGroupName = "mlz-rg-templateSpecs-dev-va"
-$templateSpecName = "avd-template"
+# Prompt the user for a password and wrap it as a secure string
+$password = Read-Host "Enter your password" -AsSecureString
 
-New-AzTemplateSpec -ResourceGroupName $resourceGroupName -Name $templateSpecName -Version '1.0' -Location 'usgovvirginia' -TemplateFile 'C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\add-ons\azure-virtual-desktop\solution.json' -UIFormDefinitionFile 'C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\add-ons\azure-virtual-desktop\uiDefinition.json' -Force
+# Output to confirm the variable is set (optional, for testing purposes)
+Write-Host "Password has been securely stored in the variable `$password`."
+
+## mlz template spec
+$Location = 'usgovvirginia'
+$ResourceGroupName = 'mlz-rg-templateSpecs-az-dev'
+$TemplateSpecName = 'bws-mlz-firewall-rules-mod'
+New-AzTemplateSpec -ResourceGroupName $ResourceGroupName -Name $TemplateSpecName -Version 1.0 -Location $Location -TemplateFile 'C:\Users\brsteel\Documents\repositories\missionlz\missionlz\src\bicep\mlz.json' -UIFormDefinitionFile 'C:\Users\brsteel\Documents\repositories\missionlz\missionlz\src\bicep\form\mlz.portal.json' -Force
+
+#mlz deployment
+az deployment sub create --name bwsdeployfw1 --location usgovvirginia --template-file C:\Users\brsteel\Documents\repositories\missionlz\missionlz\src\bicep\mlz.bicep --parameters C:\Users\brsteel\Documents\repositories\missionlz\missionlz\src\bicep\mlz.bicepparam --parameters windowsVmAdminPassword=$password
+
+# tier3 template spec
+$Location = 'usgovvirginia'
+$ResourceGroupName = 'mlz-rg-templateSpecs-az-dev'
+$TemplateSpecName = 'bws-tier3-firewall-rules-mod'
+New-AzTemplateSpec -ResourceGroupName $ResourceGroupName -Name $TemplateSpecName -Version 1.0 -Location $Location -TemplateFile 'C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\add-ons\tier3\solution.json' -UIFormDefinitionFile 'C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\add-ons\tier3\uiDefinition.json' -Force
+
+# tier3
+az deployment sub create --name bwsdeploy --location usgovvirginia --template-file C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\add-ons\tier3\solution.bicep --parameters C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\add-ons\tier3\solution.bicepparam
+
+# avd template spec
+$Location = 'usgovvirginia'
+$ResourceGroupName = 'mlz-rg-templateSpecs-az-dev'
+$TemplateSpecName = 'bws-avd-firewall-rules-mod'
+New-AzTemplateSpec -ResourceGroupName $ResourceGroupName -Name $TemplateSpecName -Version 1.0 -Location $Location -TemplateFile 'C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\add-ons\azure-virtual-desktop\solution.json' -UIFormDefinitionFile 'C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\add-ons\azure-virtual-desktop\uiDefinition.json' -Force
 
 
-$hubSubscriptionId = "afb59830-1fc9-44c9-bba3-04f657483578"
-$identitySubscriptionId = "d9cb6670-f9bf-416f-aa7b-2d6936edcaeb"
-$operationsSubscriptionId = "6d2cdf2f-3fbe-4679-95ba-4e8b7d9aed24"
-$sharedServicesSubscriptionId = "3a8f043c-c15c-4a67-9410-a585a85f2109"
-$templatePath = "C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\add-ons\azure-virtual-desktop\solution.json"
-$lzPrefix = "mlz"
-$lzLocation = "usgovvirginia"
-$deploymentName = "avd-deployment"
+#avd deployment
+az deployment sub create --name bwsdeployavd --location usgovvirginia --template-file C:\Users\brsteel\Documents\repositories\missionlz\missionlz\src\bicep\add-ons\azure-virtual-desktop\solution.bicep --parameters C:\Users\brsteel\Documents\repositories\missionlz\missionlz\src\bicep\add-ons\azure-virtual-desktop\solution.bicepparam --parameters virtualMachineAdminPassword=$password
 
 
-New-AzSubscriptionDeployment `
-  -Name $deploymentName `
-  -Location $lzLocation `
-  -TemplateFile $templatePath `
-  -resourcePrefix $lzPrefix `
-  -hubSubscriptionId $hubSubscriptionId `
-  -identitySubscriptionId $identitySubscriptionId `
-  -operationsSubscriptionId $operationsSubscriptionId `
-  -sharedServicesSubscriptionId $sharedServicesSubscriptionId
+# Prompt the user for a password and wrap it as a secure string
+$sharedkey = Read-Host "Enter your sharedkey" -AsSecureString
+
+# Output to confirm the variable is set (optional, for testing purposes)
+Write-Host "Value has been securely stored in the variable `$sharedkey`."
+
+az deployment sub create --name bwsdeployvgw --location usgovvirginia --template-file C:\Users\brsteel\Documents\repositories\missionlz\missionlz\src\bicep\add-ons\virtual-network-gateway\solution.bicep --parameters C:\Users\brsteel\Documents\repositories\missionlz\missionlz\src\bicep\add-ons\virtual-network-gateway\solution.bicepparam --parameters sharedKey=$sharedkey
+
+
+
+
+
