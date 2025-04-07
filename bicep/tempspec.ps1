@@ -11,7 +11,7 @@ $TemplateSpecName = 'bws-mlz-firewall-rules-mod'
 New-AzTemplateSpec -ResourceGroupName $ResourceGroupName -Name $TemplateSpecName -Version 1.0 -Location $Location -TemplateFile 'C:\Users\brsteel\Documents\repositories\missionlz\missionlz\src\bicep\mlz.json' -UIFormDefinitionFile 'C:\Users\brsteel\Documents\repositories\missionlz\missionlz\src\bicep\form\mlz.portal.json' -Force
 
 #mlz deployment
-az deployment sub create --name bwsdeployfw1 --location usgovvirginia --template-file C:\Users\brsteel\Documents\repositories\missionlz\missionlz\src\bicep\mlz.bicep --parameters C:\Users\brsteel\Documents\repositories\missionlz\missionlz\src\bicep\mlz.bicepparam --parameters windowsVmAdminPassword=$password
+az deployment sub create --name bwsdeploycln1 --location usgovvirginia --template-file C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\mlz.bicep --parameters C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\mlz.bicepparam --parameters windowsVmAdminPassword=$password
 
 # tier3 template spec
 $Location = 'usgovvirginia'
@@ -30,7 +30,7 @@ New-AzTemplateSpec -ResourceGroupName $ResourceGroupName -Name $TemplateSpecName
 
 
 #avd deployment
-az deployment sub create --name bwsdeployavd --location usgovvirginia --template-file C:\Users\brsteel\Documents\repositories\missionlz\missionlz\src\bicep\add-ons\azure-virtual-desktop\solution.bicep --parameters C:\Users\brsteel\Documents\repositories\missionlz\missionlz\src\bicep\add-ons\azure-virtual-desktop\solution.bicepparam --parameters virtualMachineAdminPassword=$password
+az deployment sub create --name bwsdeployavd --location usgovvirginia --template-file C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\add-ons\azure-virtual-desktop\solution.bicep --parameters C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\add-ons\azure-virtual-desktop\solution.bicepparam --parameters virtualMachineAdminPassword=$password
 
 
 # Prompt the user for a password and wrap it as a secure string
@@ -39,7 +39,7 @@ $sharedkey = Read-Host "Enter your sharedkey" -AsSecureString
 # Output to confirm the variable is set (optional, for testing purposes)
 Write-Host "Value has been securely stored in the variable `$sharedkey`."
 
-az deployment sub create --name bwsdeployvgw --location usgovvirginia --template-file C:\Users\brsteel\Documents\repositories\missionlz\missionlz\src\bicep\add-ons\virtual-network-gateway\solution.bicep --parameters C:\Users\brsteel\Documents\repositories\missionlz\missionlz\src\bicep\add-ons\virtual-network-gateway\solution.bicepparam --parameters sharedKey=$sharedkey
+az deployment sub create --name bwsdeployvgw --location usgovvirginia --template-file C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\add-ons\virtual-network-gateway\solution.bicep --parameters C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\add-ons\virtual-network-gateway\solution.bicepparam --parameters sharedKey=$sharedkey
 
 
 
