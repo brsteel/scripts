@@ -31,7 +31,7 @@ New-AzTemplateSpec -ResourceGroupName $ResourceGroupName -Name $TemplateSpecName
 
 
 #avd deployment
-az deployment sub create --name bwsdeployavd --location usgovvirginia --template-file C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\add-ons\azure-virtual-desktop\solution.bicep --parameters C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\add-ons\azure-virtual-desktop\solution.bicepparam --parameters virtualMachineAdminPassword=$password
+az deployment sub create --name bwsdeployavd --location usgovvirginia --template-file C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\add-ons\azure-virtual-desktop\solution.bicep --parameters C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\add-ons\azure-virtual-desktop\solution.bicepparam --parameters virtualMachineAdminPassword=$passwordPlainText
 
 # Prompt the user for a password and wrap it as a secure string
 $sharedkey = Read-Host "Enter your sharedkey" -AsSecureString
