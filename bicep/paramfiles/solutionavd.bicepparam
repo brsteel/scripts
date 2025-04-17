@@ -1,6 +1,11 @@
 using './solution.bicep'
 
-param activeDirectorySolution = 'MicrosoftEntraId'
+param activeDirectorySolution = 'ActiveDirectoryDomainServices'
+param domainName = 'steele.local'
+param organizationalUnitPath = 'OU=AVD,DC=steele,DC=local'
+param domainJoinUserPrincipalName = 'xadmin@steele.local'
+param fslogixContainerType = 'ProfileContainer'
+param fslogixStorageService = 'AzureFiles Standard'
 param availability = 'AvailabilityZones'
 param availabilityZones = [
   '1'
@@ -169,7 +174,7 @@ param firewallRuleCollectionGroups = [
         }
         {
           name: 'NetworkRules'
-          priority: 150
+          priority: 140
           ruleCollectionType: 'FirewallPolicyFilterRuleCollection'
           action: {
             type: 'Allow'
@@ -263,6 +268,7 @@ param firewallRuleCollectionGroups = [
                   '139'
                   '135'
                   '89'
+                  '1024-65535'
                 ]
                 sourceIpGroups: []
                 destinationIpGroups: []

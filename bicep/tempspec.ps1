@@ -79,6 +79,7 @@ New-AzSubscriptionDeployment `
   -Location "usgovvirginia" `
   -TemplateFile "C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\add-ons\azure-virtual-desktop\solution.bicep" `
   -TemplateParameterFile "C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\add-ons\azure-virtual-desktop\solutionavd.bicepparam" `
+  -domainJoinPassword $password `
   -virtualMachineAdminPassword $password
 
 
