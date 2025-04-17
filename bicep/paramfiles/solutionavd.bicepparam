@@ -98,35 +98,31 @@ param operationsVirtualNetworkAddressPrefix = '10.0.131.0/24'
 param identityVirtualNetworkAddressPrefix = '10.0.130.0/24'
 param firewallRuleCollectionGroups = [
   {
-    name: 'AVD-ApplicationCollectionGroup-Stamp-${stampIndex}'
+    name: 'AVD-RuleCollectionGroup-Stamp-${stampIndex}'
     properties: {
-      priority: 300
+      priority: 200
       ruleCollections: [
         {
           name: 'ApplicationRules'
-          priority: 110
+          priority: 150
           ruleCollectionType: 'FirewallPolicyFilterRuleCollection'
           action: {
             type: 'Allow'
           }
-          rules: [
-            {
-              name: 'AVD-RequiredEndpoints'
-              ruleType: 'ApplicationRule'
-              protocols: [
-                {
-                  protocolType: 'Https'
-                  port: 443
-                }
-              ]
-              fqdnTags: []
-              webCategories: []
-              targetFqdns: [
-                '*.microsoftonline.us'
-                  '*.graph.microsoft.us'
-                  '*.aadcdn.msftauth.net'
-                  '*.aadcdn.msauth.net'
-                  'enterpriseregistration.windows.net'
+          rules: concat(
+            [
+              {
+                name: 'AVD-RequiredDeploymentEndpoints'
+                ruleType: 'ApplicationRule'
+                protocols: [
+                  {
+                    protocolType: 'Https'
+                    port: 443
+                  }
+                ]
+                fqdnTags: []
+                webCategories: []
+                targetFqdns: [
                   'management.usgovcloudapi.net'
                   '*.blob.core.usgovcloudapi.net'
                   '*.monitoring.core.usgovcloudapi.net'
@@ -134,26 +130,46 @@ param firewallRuleCollectionGroups = [
                   '*.guestconfiguration.azure.us'
                   '*.digicert.com'
                   '*.monitor.azure.us'
-              ]
-              targetUrls: []
-              terminateTLS: false
-              sourceAddresses: virtualNetworkAddressPrefixes
-              destinationAddresses: []
-              sourceIpGroups: []
-            }
-          ]
+                ]
+                targetUrls: []
+                terminateTLS: false
+                sourceAddresses: virtualNetworkAddressPrefixes
+                destinationAddresses: []
+                sourceIpGroups: []
+              }
+            ],
+            contains(activeDirectorySolution, 'MicrosoftEntraId') ? [
+              {
+                name: 'AVD-EntraAuthEndpoints'
+                ruleType: 'ApplicationRule'
+                protocols: [
+                  {
+                    protocolType: 'Https'
+                    port: 443
+                  }
+                ]
+                fqdnTags: []
+                webCategories: []
+                targetFqdns: [
+                  '*.microsoftonline.us'
+                  '*.graph.microsoft.us'
+                  '*.aadcdn.msftauth.net'
+                  '*.aadcdn.msauth.net'
+                  'enterpriseregistration.windows.net'
+                  '*.monitor.azure.us'
+                ]
+                targetUrls: []
+                terminateTLS: false
+                sourceAddresses: virtualNetworkAddressPrefixes
+                destinationAddresses: []
+                sourceIpGroups: []
+              }
+            ] : []
+          )
         }
-      ]
-    }
-  }
-  {
-    name: 'AVD-NetworkCollectionGroup-Stamp-${stampIndex}'
-    properties: {
-      priority: 310
-      ruleCollections: [
         {
           name: 'NetworkRules'
-          priority: 120
+          priority: 150
           ruleCollectionType: 'FirewallPolicyFilterRuleCollection'
           action: {
             type: 'Allow'
