@@ -101,9 +101,11 @@ param subnetAddressPrefixes = [
 ]
 param operationsVirtualNetworkAddressPrefix = '10.0.131.0/24'
 param identityVirtualNetworkAddressPrefix = '10.0.130.0/24'
+param enableWindowsUpdateFwRules = true
+@description('The firewall rules that will be applied to the Azure Firewall.')
 param firewallRuleCollectionGroups = [
   {
-    name: 'AVD-RuleCollectionGroup-Stamp-${stampIndex}'
+    name: 'AVD-CollapsedCollectionGroup-Stamp-${stampIndex}'
     properties: {
       priority: 200
       ruleCollections: [
@@ -163,6 +165,32 @@ param firewallRuleCollectionGroups = [
                   'enterpriseregistration.windows.net'
                   '*.monitor.azure.us'
                 ]
+                targetUrls: []
+                terminateTLS: false
+                sourceAddresses: virtualNetworkAddressPrefixes
+                destinationAddresses: []
+                sourceIpGroups: []
+              }
+            ] : [],
+            enableWindowsUpdateFwRules ? [
+              {
+                name: 'WindowsUpdateEndpoints'
+                ruleType: 'ApplicationRule'
+                protocols: [
+                  {
+                    protocolType: 'Https'
+                    port: 443
+                  }
+                  {
+                    protocolType: 'Http'
+                    port: 80
+                  }
+                ]
+                fqdnTags: [
+                  'WindowsUpdate'
+                ]
+                webCategories: []
+                targetFqdns: []
                 targetUrls: []
                 terminateTLS: false
                 sourceAddresses: virtualNetworkAddressPrefixes
@@ -268,6 +296,7 @@ param firewallRuleCollectionGroups = [
                   '139'
                   '135'
                   '89'
+                  '123'
                   '1024-65535'
                 ]
                 sourceIpGroups: []
