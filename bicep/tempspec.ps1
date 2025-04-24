@@ -61,13 +61,11 @@ az deployment sub create --name bwsdeploycln1 --location usgovvirginia --templat
 
 #mlz deployment posh
 New-AzSubscriptionDeployment `
-  -Name "bwsdeploycln1" `
+  -Name "bwsdeploy-mlz" `
   -Location "usgovvirginia" `
   -TemplateFile "C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\mlz.bicep" `
   -TemplateParameterFile "C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\mlz.bicepparam" `
   -windowsVmAdminPassword $password
-
-
 
   
 #avd deployment az cli
@@ -78,8 +76,7 @@ New-AzSubscriptionDeployment `
   -Name "bwsdeployavd" `
   -Location "usgovvirginia" `
   -TemplateFile "C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\add-ons\azure-virtual-desktop\solution.bicep" `
-  -TemplateParameterFile "C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\add-ons\azure-virtual-desktop\solutionavd.bicepparam" `
-  -domainJoinPassword $password `
+  -TemplateParameterFile "C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\add-ons\azure-virtual-desktop\solution.bicepparam" `
   -virtualMachineAdminPassword $password
 
 
