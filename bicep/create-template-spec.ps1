@@ -42,6 +42,8 @@ Write-Host "Value has been securely stored in the variable `$sharedkey`."
 az deployment sub create --name bwsdeployvgw --location usgovvirginia --template-file C:\Users\brsteel\Documents\repositories\missionlz\missionlz\src\bicep\add-ons\virtual-network-gateway\solution.bicep --parameters C:\Users\brsteel\Documents\repositories\missionlz\missionlz\src\bicep\add-ons\virtual-network-gateway\solution.bicepparam --parameters sharedKey=$sharedkey
 
 
-
+# nat gateway deployment
+#mlz deployment
+az deployment sub create --name bwsdeployfw1 --location usgovvirginia --template-file C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\add-ons\nat-gateway\solution.bicep --parameters C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\add-ons\nat-gateway\solution.bicepparam
 
 
