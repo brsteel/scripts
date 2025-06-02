@@ -11,7 +11,7 @@ $TemplateSpecName = 'bws-mlz-firewall-rules-mod'
 New-AzTemplateSpec -ResourceGroupName $ResourceGroupName -Name $TemplateSpecName -Version 1.0 -Location $Location -TemplateFile 'C:\Users\brsteel\Documents\repositories\missionlz\missionlz\src\bicep\mlz.json' -UIFormDefinitionFile 'C:\Users\brsteel\Documents\repositories\missionlz\missionlz\src\bicep\form\mlz.portal.json' -Force
 
 #mlz deployment
-az deployment sub create --name bwsdeployfw1 --location usgovvirginia --template-file C:\Users\brsteel\Documents\repositories\missionlz\missionlz\src\bicep\mlz.bicep --parameters C:\Users\brsteel\Documents\repositories\missionlz\missionlz\src\bicep\mlz.bicepparam --parameters windowsVmAdminPassword=$password
+az deployment sub create --name bwsdeployfw1 --location usgovvirginia --template-file C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\mlz.bicep --parameters C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\mlz.bicepparam --parameters windowsVmAdminPassword=$password
 
 # tier3 template spec
 $Location = 'usgovvirginia'
