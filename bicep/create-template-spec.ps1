@@ -11,7 +11,7 @@ $TemplateSpecName = 'bws-mlz-firewall-rules-mod'
 New-AzTemplateSpec -ResourceGroupName $ResourceGroupName -Name $TemplateSpecName -Version 1.0 -Location $Location -TemplateFile 'C:\Users\brsteel\Documents\repositories\missionlz\missionlz\src\bicep\mlz.json' -UIFormDefinitionFile 'C:\Users\brsteel\Documents\repositories\missionlz\missionlz\src\bicep\form\mlz.portal.json' -Force
 
 #mlz deployment
-az deployment sub create --name bwsdeployfw1 --location usgovvirginia --template-file C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\mlz.bicep --parameters C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\mlz.bicepparam --parameters windowsVmAdminPassword=$password
+az deployment sub create --name bwsdeploymlz --location usgovvirginia --template-file C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\mlz.bicep --parameters C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\mlz.bicepparam --parameters windowsVmAdminPassword=$password
 
 # tier3 template spec
 $Location = 'usgovvirginia'
@@ -39,11 +39,11 @@ $sharedkey = Read-Host "Enter your sharedkey" -AsSecureString
 # Output to confirm the variable is set (optional, for testing purposes)
 Write-Host "Value has been securely stored in the variable `$sharedkey`."
 
+#vpn gateway
 az deployment sub create --name bwsdeployvgw --location usgovvirginia --template-file C:\Users\brsteel\Documents\repositories\missionlz\missionlz\src\bicep\add-ons\virtual-network-gateway\solution.bicep --parameters C:\Users\brsteel\Documents\repositories\missionlz\missionlz\src\bicep\add-ons\virtual-network-gateway\solution.bicepparam --parameters sharedKey=$sharedkey
 
-
-# nat gateway deployment
-#mlz deployment
+#nat gateway
 az deployment sub create --name bwsdeployfw1 --location usgovvirginia --template-file C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\add-ons\nat-gateway\solution.bicep --parameters C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\add-ons\nat-gateway\solution.bicepparam
 
-
+#app gateway deployment
+az deployment sub create --name bwsagwdeploy1 --location usgovvirginia --template-file C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\add-ons\app-gateway\solution.bicep --parameters C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\add-ons\app-gateway\solution.bicepparam
