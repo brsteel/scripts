@@ -1,6 +1,7 @@
 # Prompt the user for a password and wrap it as a secure string
 $password = Read-Host "Enter your password" -AsSecureString
-
+$addsSafeModeAdminPassword = $password
+$addsVmAdminPassword = $password
 # Output to confirm the variable is set (optional, for testing purposes)
 Write-Host "Password has been securely stored in the variable `$password`."
 
@@ -11,7 +12,7 @@ $TemplateSpecName = 'bws-mlz-firewall-rules-mod'
 New-AzTemplateSpec -ResourceGroupName $ResourceGroupName -Name $TemplateSpecName -Version 1.0 -Location $Location -TemplateFile 'C:\Users\brsteel\Documents\repositories\missionlz\missionlz\src\bicep\mlz.json' -UIFormDefinitionFile 'C:\Users\brsteel\Documents\repositories\missionlz\missionlz\src\bicep\form\mlz.portal.json' -Force
 
 #mlz deployment
-az deployment sub create --name bwsdeploymlz --location usgovvirginia --template-file C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\mlz.bicep --parameters C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\mlz.bicepparam --parameters windowsVmAdminPassword=$password
+az deployment sub create --name bwsdeploymlz --location usgovvirginia --template-file C:\Users\brsteel\Documents\repositories\missionlz\src\mlz.bicep --parameters C:\Users\brsteel\Documents\repositories\missionlz\src\mlz.bicepparam --parameters windowsVmAdminPassword=$password --parameters addsSafeModeAdminPassword=$addsSafeModeAdminPassword --parameters addsVmAdminPassword=$addsVmAdminPassword
 
 # tier3 template spec
 $Location = 'usgovvirginia'
