@@ -7,6 +7,8 @@ using UnityEngine.XR.Interaction.Toolkit.Locomotion;
 using UnityEngine.XR.Interaction.Toolkit.Locomotion.Movement;
 using UnityEngine.XR.Interaction.Toolkit.Locomotion.Turning;
 using UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation;
+using UnityEngine.InputSystem.XR;
+using UnityEngine.InputSystem;
 
 namespace AzureVR
 {
@@ -181,22 +183,47 @@ namespace AzureVR
             GameObject xrOriginGO = new GameObject("XR Origin");
             XROrigin xrOrigin = xrOriginGO.AddComponent<XROrigin>();
             
-            // Create Camera Offset
+            // Create Camera Offset (this is required for proper floor-relative tracking)
             GameObject cameraOffset = new GameObject("Camera Offset");
             cameraOffset.transform.SetParent(xrOriginGO.transform);
+            cameraOffset.transform.localPosition = Vector3.zero;
+            cameraOffset.transform.localRotation = Quaternion.identity;
             xrOrigin.CameraFloorOffsetObject = cameraOffset;
 
-            // Create Main Camera
+            // Create Main Camera with proper VR tracking
             GameObject cameraGO = new GameObject("Main Camera");
             cameraGO.transform.SetParent(cameraOffset.transform);
+            cameraGO.transform.localPosition = Vector3.zero;
+            cameraGO.transform.localRotation = Quaternion.identity;
             cameraGO.tag = "MainCamera";
             
+            // Add Camera component
             Camera camera = cameraGO.AddComponent<Camera>();
             camera.nearClipPlane = 0.01f;
             camera.farClipPlane = 1000f;
             
+            // Add AudioListener
             cameraGO.AddComponent<AudioListener>();
+            
+            // Add TrackedPoseDriver for VR head tracking with proper Input System bindings
+            var trackedPoseDriver = cameraGO.AddComponent<UnityEngine.InputSystem.XR.TrackedPoseDriver>();
+            trackedPoseDriver.trackingType = UnityEngine.InputSystem.XR.TrackedPoseDriver.TrackingType.RotationAndPosition;
+            trackedPoseDriver.updateType = UnityEngine.InputSystem.XR.TrackedPoseDriver.UpdateType.UpdateAndBeforeRender;
+            
+            // Set up Input System bindings for center eye (HMD)
+            var positionAction = new UnityEngine.InputSystem.InputAction("Position", UnityEngine.InputSystem.InputActionType.Value, "<XRHMD>/centerEyePosition");
+            var rotationAction = new UnityEngine.InputSystem.InputAction("Rotation", UnityEngine.InputSystem.InputActionType.Value, "<XRHMD>/centerEyeRotation");
+            
+            trackedPoseDriver.positionInput = new UnityEngine.InputSystem.InputActionProperty(positionAction);
+            trackedPoseDriver.rotationInput = new UnityEngine.InputSystem.InputActionProperty(rotationAction);
+            
+            // Enable the input actions
+            positionAction.Enable();
+            rotationAction.Enable();
+            
+            // Set up the XR Origin reference
             xrOrigin.Camera = camera;
+            xrOrigin.RequestedTrackingOriginMode = Unity.XR.CoreUtils.XROrigin.TrackingOriginMode.Floor;
 
             // Add basic locomotion components
             AddBasicLocomotion(xrOriginGO);
