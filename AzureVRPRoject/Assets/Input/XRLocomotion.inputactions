@@ -1,0 +1,32 @@
+{
+    "name": "XRLocomotion",
+    "maps": [
+        {
+            "name": "LeftHand",
+            "id": "f4b4b1d1-6d9d-4e3f-9e68-aaa100000001",
+            "actions": [
+                { "name": "Move", "type": "Value", "id": "f4b4b1d1-6d9d-4e3f-9e68-aaa100000010", "expectedControlType": "Vector2" }
+            ],
+            "bindings": [
+                { "name": "", "id": "f4b4b1d1-6d9d-4e3f-9e68-aaa100000011", "path": "<XRController>{LeftHand}/primary2DAxis", "action": "Move" },
+                { "name": "Gamepad", "id": "f4b4b1d1-6d9d-4e3f-9e68-aaa100000012", "path": "<Gamepad>/leftStick", "action": "Move" }
+            ]
+        },
+        {
+            "name": "RightHand",
+            "id": "f4b4b1d1-6d9d-4e3f-9e68-aaa100000002",
+            "actions": [
+                { "name": "SnapTurn", "type": "Value", "id": "f4b4b1d1-6d9d-4e3f-9e68-aaa100000020", "expectedControlType": "Vector2" },
+                { "name": "TeleportActivate", "type": "Button", "id": "f4b4b1d1-6d9d-4e3f-9e68-aaa100000021", "expectedControlType": "Button" },
+                { "name": "TeleportSelect", "type": "Button", "id": "f4b4b1d1-6d9d-4e3f-9e68-aaa100000022", "expectedControlType": "Button" }
+            ],
+            "bindings": [
+                { "name": "", "id": "f4b4b1d1-6d9d-4e3f-9e68-aaa100000023", "path": "<XRController>{RightHand}/primary2DAxis", "action": "SnapTurn" },
+                { "name": "Gamepad", "id": "f4b4b1d1-6d9d-4e3f-9e68-aaa100000024", "path": "<Gamepad>/rightStick", "action": "SnapTurn" },
+                { "name": "", "id": "f4b4b1d1-6d9d-4e3f-9e68-aaa100000025", "path": "<XRController>{RightHand}/primaryButton", "action": "TeleportActivate" },
+                { "name": "", "id": "f4b4b1d1-6d9d-4e3f-9e68-aaa100000026", "path": "<XRController>{RightHand}/triggerPressed", "action": "TeleportSelect" }
+            ]
+        }
+    ],
+    "controlSchemes": []
+}

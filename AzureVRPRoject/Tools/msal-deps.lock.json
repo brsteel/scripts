@@ -1,0 +1,12 @@
+{
+  "packages": [
+    { "id": "Microsoft.Identity.Client", "version": "4.60.0", "framework": "netstandard2.0", "assembly": "Microsoft.Identity.Client.dll" },
+    { "id": "Microsoft.IdentityModel.Abstractions", "version": "7.0.0", "framework": "netstandard2.0", "assembly": "Microsoft.IdentityModel.Abstractions.dll" },
+    { "id": "System.Diagnostics.DiagnosticSource", "version": "7.0.0", "framework": "netstandard2.0", "assembly": "System.Diagnostics.DiagnosticSource.dll" },
+    { "id": "System.Memory", "version": "4.5.5", "framework": "netstandard2.0", "assembly": "System.Memory.dll" },
+    { "id": "System.Buffers", "version": "4.5.1", "framework": "netstandard2.0", "assembly": "System.Buffers.dll" },
+    { "id": "System.Numerics.Vectors", "version": "4.5.0", "framework": "netstandard2.0", "assembly": "System.Numerics.Vectors.dll" },
+    { "id": "System.Runtime.CompilerServices.Unsafe", "version": "4.5.3", "framework": "netstandard2.0", "assembly": "System.Runtime.CompilerServices.Unsafe.dll" },
+    { "id": "Newtonsoft.Json", "version": "13.0.3", "framework": "netstandard2.0", "assembly": "Newtonsoft.Json.dll" }
+  ]
+}
