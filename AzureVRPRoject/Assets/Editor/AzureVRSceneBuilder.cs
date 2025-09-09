@@ -16,7 +16,6 @@ namespace AzureVR.Editor
         private const string ScenePath = "Assets/Scenes/Main.unity";
         private const string PrefabsFolder = "Assets/Prefabs";
         private const string TextPrefabPath = PrefabsFolder + "/TextLinePrefab.prefab";
-        private const string InputActionsPath = "Assets/Input/XRLocomotion.inputactions";
 
         [MenuItem("Tools/AzureVR/Generate Sample Scene", priority = 0)]
         public static void GenerateScene()
@@ -34,23 +33,13 @@ namespace AzureVR.Editor
             var rig = constructRoot.AddComponent<XRConstructRig>();
             rig.cubeCount = 6;
 
-            // Add hands/controllers spawner for grab & presence
-            constructRoot.AddComponent<XRHandsSpawner>();
-
-            // Locomotion setup
-            var locomotionGO = new GameObject("Locomotion");
-            var locomotion = locomotionGO.AddComponent<XRLocomotionSetup>();
-            var inputAsset = AssetDatabase.LoadAssetAtPath<InputActionAsset>(InputActionsPath);
-            if (inputAsset == null)
-            {
-                Debug.LogWarning($"InputActionAsset not found at {InputActionsPath}. Assign manually.");
-            }
-            else
-            {
-                locomotion.locomotionActions = inputAsset;
-            }
-            locomotion.enableSmoothTurn = true; // default to head-based smooth turn
-            locomotion.enableSnapTurn = false;
+            // Modern VR setup using XR Interaction Toolkit 3.0+
+            var sceneSetupGO = new GameObject("VR Scene Setup");
+            var sceneSetup = sceneSetupGO.AddComponent<SceneSetup>();
+            sceneSetup.initializeXR = true;
+            sceneSetup.createBasicEnvironment = true;
+            
+            Debug.Log("AzureVRSceneBuilder: Added modern SceneSetup component (replaces old custom locomotion).");
 
             // Auth manager
             var authGO = new GameObject("Auth");

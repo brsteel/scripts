@@ -65,9 +65,9 @@ namespace AzureVR
             }
             DestroyImmediate(sphere.GetComponent<Collider>()); // remove default collider; we'll add trigger collider at root
 
-            // Tracking + interaction components
-            var controller = go.AddComponent<XRController>();
-            controller.controllerNode = node;
+            // Tracking + interaction components (using modern VRHandTracker instead of deprecated XRController)
+            var handTracker = go.AddComponent<VRHandTracker>();
+            handTracker.trackingNode = node;
             var interactor = go.AddComponent<UnityEngine.XR.Interaction.Toolkit.Interactors.XRDirectInteractor>();
             // Collider (trigger) for direct grabs
             var col = go.AddComponent<SphereCollider>();

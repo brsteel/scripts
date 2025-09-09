@@ -1,258 +1,333 @@
 using UnityEngine;
-using UnityEngine.XR.Interaction.Toolkit;
-using Unity.XR.CoreUtils;
-using TMPro;
+using UnityEngine.XR.Management;
 using System.Collections;
+using Unity.XR.CoreUtils;
+using UnityEngine.XR.Interaction.Toolkit;
+using UnityEngine.XR.Interaction.Toolkit.Locomotion;
+using UnityEngine.XR.Interaction.Toolkit.Locomotion.Movement;
+using UnityEngine.XR.Interaction.Toolkit.Locomotion.Turning;
+using UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation;
 
 namespace AzureVR
 {
     /// <summary>
-    /// Quick VR scene setup helper - creates basic VR environment without Azure components
+    /// Proper VR scene setup using XR Interaction Toolkit built-in components
+    /// This replaces our custom implementation with Unity's official toolkit prefabs
     /// </summary>
     [DefaultExecutionOrder(-200)]
     public class SceneSetup : MonoBehaviour
     {
-        [Header("Scene Setup")]
-        public bool createXRRig = true;
-        public bool createTestEnvironment = true;
-        public bool createInstructions = true;
+        [Header("XR Setup")]
+        [Tooltip("Initialize XR manually. Disable if XR is already set up in Project Settings > XR Plug-in Management.")]
+        public bool initializeXR = false; // Changed default to false
+        public bool createBasicEnvironment = true;
         
-        private void Awake()
+        [Header("Toolkit Components")]
+        public GameObject xrOriginPrefab; // Assign XR Origin (XR Rig) prefab from toolkit
+        public GameObject interactionManagerPrefab; // Assign XR Interaction Manager prefab
+        
+        [Header("Environment")]
+        public Material floorMaterial;
+        public Material wallMaterial;
+
+        void Start()
         {
-            // Only run once
-            if (FindObjectOfType<XROrigin>() != null && !createXRRig)
+            if (initializeXR)
             {
-                Debug.Log("SceneSetup: XR Rig already exists, skipping setup");
-                return;
+                StartCoroutine(InitializeXRAndSetupScene());
+            }
+            else
+            {
+                SetupScene();
+            }
+        }
+
+        private IEnumerator InitializeXRAndSetupScene()
+        {
+            Debug.Log("SceneSetup: Checking XR initialization status...");
+
+            var manager = XRGeneralSettings.Instance?.Manager;
+            if (manager == null)
+            {
+                Debug.LogError("SceneSetup: XR Manager is null! Check XR Management settings.");
+                SetupScene();
+                yield break;
             }
 
+            // Check if XR is already initialized
+            if (manager.activeLoader != null)
+            {
+                Debug.Log("SceneSetup: XR is already initialized. Skipping initialization.");
+            }
+            else
+            {
+                Debug.Log("SceneSetup: Initializing XR...");
+                // Initialize XR only if not already initialized
+                yield return manager.InitializeLoader();
+            }
+
+            if (manager.activeLoader == null)
+            {
+                Debug.LogWarning("SceneSetup: Failed to initialize XR loader. Running in desktop mode.");
+            }
+            else
+            {
+                Debug.Log("SceneSetup: XR initialized successfully with loader: " + manager.activeLoader.name);
+                
+                // Start the XR subsystems if they're not already running
+                yield return new WaitForSeconds(0.1f);
+                try
+                {
+                    if (!manager.isInitializationComplete)
+                    {
+                        manager.StartSubsystems();
+                        Debug.Log("SceneSetup: XR subsystems started");
+                    }
+                    else
+                    {
+                        Debug.Log("SceneSetup: XR subsystems already running");
+                    }
+                }
+                catch (System.Exception e)
+                {
+                    Debug.LogWarning($"SceneSetup: Could not start XR subsystems: {e.Message}");
+                }
+            }
+
+            // Setup scene with proper toolkit components
             SetupScene();
         }
 
         private void SetupScene()
         {
-            Debug.Log("SceneSetup: Creating basic VR scene...");
+            Debug.Log("SceneSetup: Setting up VR scene with toolkit components...");
 
-            // 1. Create XR Rig
-            if (createXRRig)
+            // 1. Create XR Interaction Manager (handles all interactions)
+            CreateXRInteractionManager();
+
+            // 2. Create XR Origin (complete VR rig with locomotion)
+            CreateXROrigin();
+
+            // 3. Create basic environment
+            if (createBasicEnvironment)
             {
-                CreateXRRig();
+                CreateBasicEnvironment();
             }
 
-            // 2. Create test environment
-            if (createTestEnvironment)
-            {
-                CreateTestEnvironment();
-            }
+            // 4. Clean up any duplicate AudioListeners
+            CleanupAudioListeners();
 
-            // 3. Create instructions
-            if (createInstructions)
-            {
-                CreateInstructions();
-            }
-
-            // 4. Final cleanup - fix any AudioListener duplicates after everything is created
-            StartCoroutine(FixAudioListenersDelayed());
-
-            Debug.Log("SceneSetup: Basic VR scene ready! Put on your headset and press Play.");
+            Debug.Log("SceneSetup: VR scene setup complete!");
         }
 
-        private void CreateXRRig()
+        private void CreateXRInteractionManager()
         {
-            // Create the complete hierarchy first, then add XROrigin component
-            var xrOriginGO = new GameObject("XR Origin (XR Rig)");
-            
-            // Create Camera Offset child
-            var cameraOffsetGO = new GameObject("Camera Offset");
-            cameraOffsetGO.transform.SetParent(xrOriginGO.transform);
-            cameraOffsetGO.transform.localPosition = Vector3.zero;
-            
-            // Create Main Camera under the Camera Offset
-            var cameraGO = new GameObject("Main Camera");
-            cameraGO.tag = "MainCamera";
-            cameraGO.transform.SetParent(cameraOffsetGO.transform);
-            cameraGO.transform.localPosition = Vector3.zero;
-            
-            var camera = cameraGO.AddComponent<Camera>();
-            camera.clearFlags = CameraClearFlags.SolidColor;
-            camera.backgroundColor = Color.black;
-            camera.nearClipPlane = 0.1f; // Increased for better performance
-            camera.farClipPlane = 100f;   // Limit draw distance
-            // Note: AudioListener will be handled by our delayed cleanup
-            
-            // Performance optimizations for VR
-            OptimizeForVR(camera);
-            
-            // Add XROrigin component - there will be a harmless warning about Camera Floor Offset
-            // which we'll fix immediately after
-            var xrOrigin = xrOriginGO.AddComponent<XROrigin>();
-            
-            // Set the Camera Floor Offset Object (this fixes the functionality even if warning appeared)
-            xrOrigin.CameraFloorOffsetObject = cameraOffsetGO;
-            
-            Debug.Log("SceneSetup: XROrigin created and configured (ignore any Camera Floor Offset warning)");
-            
-            // Debug: Check if XR is actually running
-            if (UnityEngine.XR.XRSettings.enabled)
+            // Check if one already exists
+            if (FindObjectOfType<XRInteractionManager>() != null)
             {
-                Debug.Log("SceneSetup: XR is enabled, device: " + UnityEngine.XR.XRSettings.loadedDeviceName);
+                Debug.Log("SceneSetup: XR Interaction Manager already exists in scene.");
+                return;
+            }
+
+            GameObject interactionManagerGO;
+            
+            if (interactionManagerPrefab != null)
+            {
+                // Use assigned prefab
+                interactionManagerGO = Instantiate(interactionManagerPrefab);
+                Debug.Log("SceneSetup: Created XR Interaction Manager from prefab.");
             }
             else
             {
-                Debug.LogWarning("SceneSetup: XR is NOT enabled! Enabling desktop fallback mode...");
-                EnableDesktopFallback(cameraGO);
-            }
-
-            // Add XR Interaction Manager
-            if (FindObjectOfType<XRInteractionManager>() == null)
-            {
-                var interactionManagerGO = new GameObject("XR Interaction Manager");
+                // Create manually
+                interactionManagerGO = new GameObject("XR Interaction Manager");
                 interactionManagerGO.AddComponent<XRInteractionManager>();
+                Debug.Log("SceneSetup: Created XR Interaction Manager manually.");
             }
 
-            // Add basic directional light
-            if (FindObjectOfType<Light>() == null)
+            interactionManagerGO.name = "XR Interaction Manager";
+        }
+
+        private void CreateXROrigin()
+        {
+            // Check if one already exists
+            if (FindObjectOfType<XROrigin>() != null)
             {
-                var lightGO = new GameObject("Directional Light");
-                var light = lightGO.AddComponent<Light>();
-                light.type = LightType.Directional;
-                light.intensity = 1.2f;
-                light.color = new Color(1f, 0.95f, 0.8f);
-                lightGO.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
+                Debug.Log("SceneSetup: XR Origin already exists in scene.");
+                return;
             }
 
-            // Add locomotion setup
-            var locomotionGO = new GameObject("Locomotion Setup");
-            locomotionGO.AddComponent<XRLocomotionSetup>();
+            GameObject xrOriginGO;
 
-            Debug.Log("SceneSetup: XR Rig created with proper structure");
+            if (xrOriginPrefab != null)
+            {
+                // Use assigned prefab (recommended)
+                xrOriginGO = Instantiate(xrOriginPrefab);
+                Debug.Log("SceneSetup: Created XR Origin from prefab with built-in locomotion!");
+            }
+            else
+            {
+                // Create basic XR Origin manually
+                xrOriginGO = CreateBasicXROrigin();
+                Debug.Log("SceneSetup: Created basic XR Origin manually.");
+            }
+
+            xrOriginGO.name = "XR Origin";
         }
 
-        private void EnableDesktopFallback(GameObject cameraGO)
+        private GameObject CreateBasicXROrigin()
         {
-            // Add mouse look for desktop testing
-            var mouseLook = cameraGO.AddComponent<MouseLook>();
+            // Create XR Origin
+            GameObject xrOriginGO = new GameObject("XR Origin");
+            XROrigin xrOrigin = xrOriginGO.AddComponent<XROrigin>();
             
-            // Position camera at standing height
-            cameraGO.transform.position = new Vector3(0, 1.6f, 0);
+            // Create Camera Offset
+            GameObject cameraOffset = new GameObject("Camera Offset");
+            cameraOffset.transform.SetParent(xrOriginGO.transform);
+            xrOrigin.CameraFloorOffsetObject = cameraOffset;
+
+            // Create Main Camera
+            GameObject cameraGO = new GameObject("Main Camera");
+            cameraGO.transform.SetParent(cameraOffset.transform);
+            cameraGO.tag = "MainCamera";
             
-            Debug.Log("SceneSetup: Desktop fallback enabled - use mouse to look around, WASD to move");
+            Camera camera = cameraGO.AddComponent<Camera>();
+            camera.nearClipPlane = 0.01f;
+            camera.farClipPlane = 1000f;
+            
+            cameraGO.AddComponent<AudioListener>();
+            xrOrigin.Camera = camera;
+
+            // Add basic locomotion components
+            AddBasicLocomotion(xrOriginGO);
+
+            // Add basic controllers
+            AddBasicControllers(cameraOffset);
+
+            return xrOriginGO;
         }
 
-        private void OptimizeForVR(Camera camera)
+        private void AddBasicLocomotion(GameObject xrOrigin)
         {
-            // Set target frame rate for VR (72 or 90 FPS)
-            Application.targetFrameRate = 72;
-            
-            // Disable expensive camera effects
-            camera.allowHDR = false;
-            camera.allowMSAA = false;
-            
-            // Set quality settings for performance
-            QualitySettings.shadows = ShadowQuality.Disable;
-            QualitySettings.shadowResolution = ShadowResolution.Low;
-            QualitySettings.antiAliasing = 0;
-            QualitySettings.anisotropicFiltering = AnisotropicFiltering.Disable;
-            QualitySettings.realtimeReflectionProbes = false;
-            
-            Debug.Log("SceneSetup: VR performance optimizations applied");
+            // Add Locomotion Mediator (required for XR Interaction Toolkit 3.0+)
+            xrOrigin.AddComponent<LocomotionMediator>();
+
+            // Add Continuous Move Provider (modern XR Interaction Toolkit 3.0+)
+            var continuousMove = xrOrigin.AddComponent<ContinuousMoveProvider>();
+            continuousMove.moveSpeed = 2.0f;
+
+            // Add Snap Turn Provider (modern XR Interaction Toolkit 3.0+)
+            var snapTurn = xrOrigin.AddComponent<SnapTurnProvider>();
+            snapTurn.turnAmount = 45f;
+
+            // Add Teleportation Provider (modern XR Interaction Toolkit 3.0+)
+            xrOrigin.AddComponent<TeleportationProvider>();
+
+            Debug.Log("SceneSetup: Added modern locomotion providers (XR Interaction Toolkit 3.0+).");
         }
 
-        private void CreateInstructions()
+        private void AddBasicControllers(GameObject cameraOffset)
         {
-            // Create a simple welcome text in VR
-            var instructionsRoot = new GameObject("Instructions");
-            instructionsRoot.transform.position = new Vector3(-2f, 1.5f, 2f);
+            // Create Left Controller (XR Interaction Toolkit 3.0+ approach)
+            GameObject leftController = new GameObject("LeftHand Controller");
+            leftController.transform.SetParent(cameraOffset.transform);
+            
+            // Add XR Ray Interactor for left hand
+            var leftRayInteractor = leftController.AddComponent<UnityEngine.XR.Interaction.Toolkit.Interactors.XRRayInteractor>();
+            leftRayInteractor.rayOriginTransform = leftController.transform;
+            
+            // Add XR Direct Interactor for grabbing
+            leftController.AddComponent<UnityEngine.XR.Interaction.Toolkit.Interactors.XRDirectInteractor>();
 
-            var instructionText = new GameObject("Welcome Text");
-            instructionText.transform.SetParent(instructionsRoot.transform);
-            instructionText.transform.localPosition = Vector3.zero;
+            // Create Right Controller (XR Interaction Toolkit 3.0+ approach)
+            GameObject rightController = new GameObject("RightHand Controller");
+            rightController.transform.SetParent(cameraOffset.transform);
+            
+            // Add XR Ray Interactor for right hand
+            var rightRayInteractor = rightController.AddComponent<UnityEngine.XR.Interaction.Toolkit.Interactors.XRRayInteractor>();
+            rightRayInteractor.rayOriginTransform = rightController.transform;
+            
+            // Add XR Direct Interactor for grabbing
+            rightController.AddComponent<UnityEngine.XR.Interaction.Toolkit.Interactors.XRDirectInteractor>();
 
-            var tmp = instructionText.AddComponent<TextMeshPro>();
-            tmp.text = "Welcome to VR!\n\nControls:\n- Move: Thumbsticks\n- Grab: Grip buttons\n- Look around naturally\n\nGrab the colorful cubes!";
-            tmp.fontSize = 0.3f;
-            tmp.color = Color.cyan;
-            tmp.alignment = TextAlignmentOptions.Left;
-            tmp.autoSizeTextContainer = true;
-
-            Debug.Log("SceneSetup: Instructions created");
+            Debug.Log("SceneSetup: Added modern controller interactors (XR Interaction Toolkit 3.0+).");
         }
 
-        private void CreateTestEnvironment()
+        private void CreateBasicEnvironment()
         {
             // Create floor
-            var floor = GameObject.CreatePrimitive(PrimitiveType.Plane);
+            GameObject floor = GameObject.CreatePrimitive(PrimitiveType.Plane);
             floor.name = "Floor";
-            floor.transform.localScale = Vector3.one * 5f;
+            floor.transform.position = Vector3.zero;
+            floor.transform.localScale = new Vector3(5, 1, 5);
             
-            var floorRenderer = floor.GetComponent<MeshRenderer>();
-            // Use Standard shader (always available) or fallback to default
-            var shader = Shader.Find("Standard") ?? Shader.Find("Legacy Shaders/Diffuse");
-            if (shader != null)
-            {
-                var floorMaterial = new Material(shader);
-                floorMaterial.color = new Color(0.1f, 0.1f, 0.2f, 1f);
-                floorRenderer.material = floorMaterial;
-            }
+            if (floorMaterial != null)
+                floor.GetComponent<Renderer>().material = floorMaterial;
             else
-            {
-                // Just use the default material if no shader found
-                floorRenderer.material.color = new Color(0.1f, 0.1f, 0.2f, 1f);
-            }
+                floor.GetComponent<Renderer>().material.color = Color.gray;
 
-            // Create some reference cubes
-            for (int i = 0; i < 3; i++)
+            // Create some walls for reference
+            for (int i = 0; i < 4; i++)
             {
-                var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                cube.name = $"Reference Cube {i + 1}";
-                cube.transform.position = new Vector3(i * 1.5f - 1.5f, 0.5f, 3f);
-                cube.transform.localScale = Vector3.one * 0.3f;
+                GameObject wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                wall.name = $"Wall_{i}";
+                wall.transform.localScale = new Vector3(10, 3, 0.1f);
                 
-                var cubeRenderer = cube.GetComponent<MeshRenderer>();
-                // Use Standard shader (always available) or fallback to default
-                var cubeShader = Shader.Find("Standard") ?? Shader.Find("Legacy Shaders/Diffuse");
-                if (cubeShader != null)
-                {
-                    var cubeMaterial = new Material(cubeShader);
-                    cubeMaterial.color = new Color(Random.value, Random.value, Random.value, 1f);
-                    cubeRenderer.material = cubeMaterial;
-                }
+                float angle = i * 90f;
+                wall.transform.position = new Vector3(
+                    Mathf.Sin(angle * Mathf.Deg2Rad) * 8f,
+                    1.5f,
+                    Mathf.Cos(angle * Mathf.Deg2Rad) * 8f
+                );
+                wall.transform.rotation = Quaternion.Euler(0, angle, 0);
+                
+                if (wallMaterial != null)
+                    wall.GetComponent<Renderer>().material = wallMaterial;
                 else
-                {
-                    // Just change the color of the existing material
-                    cubeRenderer.material.color = new Color(Random.value, Random.value, Random.value, 1f);
-                }
-
-                // Make them grabbable
-                var rigidbody = cube.AddComponent<Rigidbody>();
-                var grabInteractable = cube.AddComponent<UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable>();
-                grabInteractable.throwOnDetach = true;
+                    wall.GetComponent<Renderer>().material.color = new Color(0.8f, 0.8f, 1f);
             }
 
-            // Create lighting
-            var lightGO = new GameObject("Directional Light");
-            var light = lightGO.AddComponent<Light>();
-            light.type = LightType.Directional;
-            light.intensity = 1.2f;
-            light.color = new Color(1f, 0.95f, 0.8f);
-            lightGO.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
+            // Add some interactive objects
+            CreateInteractableObjects();
 
-            Debug.Log("SceneSetup: Test environment created");
+            Debug.Log("SceneSetup: Created basic environment.");
         }
 
-        private System.Collections.IEnumerator FixAudioListenersDelayed()
+        private void CreateInteractableObjects()
         {
-            // Wait a frame to ensure all components are fully initialized
-            yield return null;
-            
-            // Find all AudioListeners in the scene
+            // Create some cubes to grab
+            for (int i = 0; i < 3; i++)
+            {
+                GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                cube.name = $"Interactable Cube {i + 1}";
+                cube.transform.position = new Vector3(i * 2 - 2, 1, 2);
+                cube.transform.localScale = Vector3.one * 0.3f;
+                
+                // Add Rigidbody for physics
+                Rigidbody rb = cube.AddComponent<Rigidbody>();
+                rb.mass = 0.5f;
+                
+                // Add XR Grab Interactable
+                UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable grabInteractable = cube.AddComponent<UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable>();
+                
+                // Color the cubes
+                cube.GetComponent<Renderer>().material.color = new Color(
+                    Random.Range(0.3f, 1f),
+                    Random.Range(0.3f, 1f),
+                    Random.Range(0.3f, 1f)
+                );
+            }
+
+            Debug.Log("SceneSetup: Created interactable objects.");
+        }
+
+        private void CleanupAudioListeners()
+        {
             AudioListener[] listeners = FindObjectsOfType<AudioListener>();
-            
             if (listeners.Length > 1)
             {
-                Debug.Log($"SceneSetup: Found {listeners.Length} AudioListeners, removing duplicates...");
+                Debug.LogWarning($"SceneSetup: Found {listeners.Length} AudioListeners. Removing duplicates...");
                 
-                // Keep the first one (usually on the Main Camera), remove the rest
                 for (int i = 1; i < listeners.Length; i++)
                 {
                     Debug.Log($"SceneSetup: Removing duplicate AudioListener from {listeners[i].gameObject.name}");
@@ -261,16 +336,46 @@ namespace AzureVR
                 
                 Debug.Log("SceneSetup: AudioListener cleanup complete.");
             }
-            else
-            {
-                Debug.Log($"SceneSetup: AudioListener check OK - found {listeners.Length} listener(s).");
-            }
         }
 
-        [ContextMenu("Setup Scene Now")]
+        [ContextMenu("Setup VR Scene Now")]
         public void SetupSceneManually()
         {
             SetupScene();
+        }
+
+        [ContextMenu("Check XR Status")]
+        public void CheckXRStatus()
+        {
+            var manager = XRGeneralSettings.Instance?.Manager;
+            if (manager == null)
+            {
+                Debug.Log("XR Status: XR Manager is null. XR not configured in Project Settings.");
+            }
+            else if (manager.activeLoader == null)
+            {
+                Debug.Log("XR Status: XR Manager exists but no active loader. XR not initialized.");
+            }
+            else
+            {
+                Debug.Log($"XR Status: XR is active with loader '{manager.activeLoader.name}'. Initialization complete: {manager.isInitializationComplete}");
+            }
+        }
+
+        [ContextMenu("Clear Scene")]
+        public void ClearScene()
+        {
+            // Remove existing VR components
+            XROrigin[] origins = FindObjectsOfType<XROrigin>();
+            XRInteractionManager[] managers = FindObjectsOfType<XRInteractionManager>();
+            
+            foreach (var origin in origins)
+                DestroyImmediate(origin.gameObject);
+            
+            foreach (var manager in managers)
+                DestroyImmediate(manager.gameObject);
+            
+            Debug.Log("SceneSetup: Scene cleared of VR components.");
         }
     }
 }
