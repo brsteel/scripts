@@ -33,7 +33,7 @@ namespace AzureVR
                 originGO.transform.SetParent(transform, false);
                 origin = originGO.AddComponent<XROrigin>();
                 // Interaction Manager
-                if (FindObjectOfType<XRInteractionManager>() == null)
+                if (FindFirstObjectByType<XRInteractionManager>() == null)
                 {
                     var im = new GameObject("XR Interaction Manager");
                     im.AddComponent<XRInteractionManager>();
@@ -84,7 +84,7 @@ namespace AzureVR
 
         private void CreateLight()
         {
-            if (FindObjectOfType<Light>() != null) return;
+            if (FindFirstObjectByType<Light>() != null) return;
             var lightGO = new GameObject("KeyLight");
             var light = lightGO.AddComponent<Light>();
             light.type = LightType.Directional;

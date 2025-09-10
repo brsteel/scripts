@@ -11,7 +11,7 @@ namespace AzureVR
         void Start()
         {
             // Find or create the SceneSetup component
-            SceneSetup sceneSetup = FindObjectOfType<SceneSetup>();
+            SceneSetup sceneSetup = FindFirstObjectByType<SceneSetup>();
             
             if (sceneSetup == null)
             {

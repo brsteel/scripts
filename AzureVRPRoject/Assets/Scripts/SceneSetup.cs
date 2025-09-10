@@ -125,7 +125,7 @@ namespace AzureVR
         private void CreateXRInteractionManager()
         {
             // Check if one already exists
-            if (FindObjectOfType<XRInteractionManager>() != null)
+            if (FindFirstObjectByType<XRInteractionManager>() != null)
             {
                 Debug.Log("SceneSetup: XR Interaction Manager already exists in scene.");
                 return;
@@ -153,7 +153,7 @@ namespace AzureVR
         private void CreateXROrigin()
         {
             // Check if one already exists
-            if (FindObjectOfType<XROrigin>() != null)
+            if (FindFirstObjectByType<XROrigin>() != null)
             {
                 Debug.Log("SceneSetup: XR Origin already exists in scene.");
                 return;
@@ -350,7 +350,7 @@ namespace AzureVR
 
         private void CleanupAudioListeners()
         {
-            AudioListener[] listeners = FindObjectsOfType<AudioListener>();
+            AudioListener[] listeners = FindObjectsByType<AudioListener>(FindObjectsSortMode.None);
             if (listeners.Length > 1)
             {
                 Debug.LogWarning($"SceneSetup: Found {listeners.Length} AudioListeners. Removing duplicates...");
@@ -393,8 +393,8 @@ namespace AzureVR
         public void ClearScene()
         {
             // Remove existing VR components
-            XROrigin[] origins = FindObjectsOfType<XROrigin>();
-            XRInteractionManager[] managers = FindObjectsOfType<XRInteractionManager>();
+            XROrigin[] origins = FindObjectsByType<XROrigin>(FindObjectsSortMode.None);
+            XRInteractionManager[] managers = FindObjectsByType<XRInteractionManager>(FindObjectsSortMode.None);
             
             foreach (var origin in origins)
                 DestroyImmediate(origin.gameObject);

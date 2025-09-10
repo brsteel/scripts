@@ -1,5 +1,5 @@
 using UnityEngine;
-using UnityEngine.XR.Interaction.Toolkit;
+
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 using System.Collections.Generic;
 
@@ -294,8 +294,8 @@ public class PoolTable : MonoBehaviour
         Renderer ballRenderer = ball.GetComponent<Renderer>();
         Material ballMaterial = new Material(Shader.Find("Standard"));
         ballMaterial.color = ballColors[ballNumber];
-        ballMaterial.metallic = 0.1f;
-        ballMaterial.smoothness = 0.9f;
+        ballMaterial.SetFloat("_Metallic", 0.1f);
+        ballMaterial.SetFloat("_Glossiness", 0.9f);
         ballRenderer.material = ballMaterial;
         
         // Add ball script
@@ -421,8 +421,8 @@ public class PoolTable : MonoBehaviour
     {
         Material feltMaterial = new Material(Shader.Find("Standard"));
         feltMaterial.color = new Color(0.1f, 0.6f, 0.1f); // Pool table green
-        feltMaterial.metallic = 0.0f;
-        feltMaterial.smoothness = 0.2f; // Slightly rough for felt texture
+        feltMaterial.SetFloat("_Metallic", 0.0f);
+        feltMaterial.SetFloat("_Glossiness", 0.2f); // Slightly rough for felt texture
         return feltMaterial;
     }
     
@@ -430,8 +430,8 @@ public class PoolTable : MonoBehaviour
     {
         Material woodMaterial = new Material(Shader.Find("Standard"));
         woodMaterial.color = new Color(0.4f, 0.2f, 0.1f); // Dark wood color
-        woodMaterial.metallic = 0.0f;
-        woodMaterial.smoothness = 0.7f;
+        woodMaterial.SetFloat("_Metallic", 0.0f);
+        woodMaterial.SetFloat("_Glossiness", 0.7f);
         return woodMaterial;
     }
     
@@ -439,8 +439,8 @@ public class PoolTable : MonoBehaviour
     {
         Material cushionMaterial = new Material(Shader.Find("Standard"));
         cushionMaterial.color = new Color(0.2f, 0.7f, 0.2f); // Lighter green for cushions
-        cushionMaterial.metallic = 0.0f;
-        cushionMaterial.smoothness = 0.4f;
+        cushionMaterial.SetFloat("_Metallic", 0.0f);
+        cushionMaterial.SetFloat("_Glossiness", 0.4f);
         return cushionMaterial;
     }
     

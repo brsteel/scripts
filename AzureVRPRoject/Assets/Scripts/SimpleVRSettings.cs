@@ -25,9 +25,9 @@ namespace AzureVR
         void Start()
         {
             // Find the modern locomotion providers (XR Interaction Toolkit 3.0+)
-            continuousMoveProvider = FindObjectOfType<ContinuousMoveProvider>();
-            snapTurnProvider = FindObjectOfType<SnapTurnProvider>();
-            teleportationProvider = FindObjectOfType<TeleportationProvider>();
+            continuousMoveProvider = FindFirstObjectByType<ContinuousMoveProvider>();
+            snapTurnProvider = FindFirstObjectByType<SnapTurnProvider>();
+            teleportationProvider = FindFirstObjectByType<TeleportationProvider>();
 
             if (continuousMoveProvider == null)
                 Debug.LogWarning("No ContinuousMoveProvider found. Add XR Origin (XR Rig) prefab to scene.");

@@ -131,7 +131,7 @@ public class PoolCueStick : XRGrabInteractable
         }
         
         // If no cue ball in range, find nearest ball
-        PoolBall[] allBalls = FindObjectsOfType<PoolBall>();
+        PoolBall[] allBalls = FindObjectsByType<PoolBall>(FindObjectsSortMode.None);
         float nearestDistance = maxAimDistance;
         GameObject nearestBall = null;
         
@@ -186,7 +186,8 @@ public class PoolCueStick : XRGrabInteractable
         
         // Color the line based on shot power
         Color lineColor = Color.Lerp(Color.white, Color.red, shotPower / maxPower);
-        aimingLine.color = lineColor;
+        aimingLine.startColor = lineColor;
+        aimingLine.endColor = lineColor;
     }
     
     void PredictBallTrajectory(Vector3[] points, int startIndex, Vector3 ballPos, Vector3 cueDirection)
@@ -200,7 +201,7 @@ public class PoolCueStick : XRGrabInteractable
             points[i] = currentPos;
             
             // Simple collision prediction with table bounds
-            PoolTable poolTable = FindObjectOfType<PoolTable>();
+            PoolTable poolTable = FindFirstObjectByType<PoolTable>();
             if (poolTable != null)
             {
                 Bounds tableBounds = new Bounds(poolTable.transform.position, 
