@@ -45,7 +45,7 @@ public class PoolBall : MonoBehaviour
     void CheckMovement()
     {
         bool wasMoving = isMoving;
-        isMoving = rb.velocity.magnitude > stopThreshold;
+        isMoving = rb.linearVelocity.magnitude > stopThreshold;
         
         // If ball just stopped moving
         if (wasMoving && !isMoving)
@@ -56,7 +56,7 @@ public class PoolBall : MonoBehaviour
     
     void HandleRollingSound()
     {
-        if (isMoving && rb.velocity.magnitude > 0.1f)
+        if (isMoving && rb.linearVelocity.magnitude > 0.1f)
         {
             if (!isPlayingRollSound && rollSound != null)
             {
@@ -68,7 +68,7 @@ public class PoolBall : MonoBehaviour
             // Adjust volume based on speed
             if (audioSource.isPlaying)
             {
-                audioSource.volume = Mathf.Clamp(rb.velocity.magnitude * 0.1f, 0.05f, 0.3f);
+                audioSource.volume = Mathf.Clamp(rb.linearVelocity.magnitude * 0.1f, 0.05f, 0.3f);
             }
         }
         else
@@ -104,10 +104,10 @@ public class PoolBall : MonoBehaviour
     {
         // Apply realistic cushion physics
         Vector3 normal = collision.contacts[0].normal;
-        Vector3 velocity = rb.velocity;
+        Vector3 velocity = rb.linearVelocity;
         
         // Reduce velocity slightly to simulate energy loss
-        rb.velocity = velocity * 0.95f;
+        rb.linearVelocity = velocity * 0.95f;
         
         if (poolTable != null)
         {
@@ -124,7 +124,7 @@ public class PoolBall : MonoBehaviour
         transform.position = pos;
         
         // Ensure ball is completely stopped
-        rb.velocity = Vector3.zero;
+        rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
     }
     
@@ -145,12 +145,12 @@ public class PoolBall : MonoBehaviour
     
     public Vector3 GetVelocity()
     {
-        return rb.velocity;
+        return rb.linearVelocity;
     }
     
     public void SetPosition(Vector3 position)
     {
-        rb.velocity = Vector3.zero;
+        rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
         transform.position = position;
     }

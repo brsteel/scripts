@@ -42,7 +42,7 @@ public class PoolPocket : MonoBehaviour
         Rigidbody ballRb = ball.GetComponent<Rigidbody>();
         if (ballRb != null)
         {
-            ballRb.velocity = Vector3.zero;
+            ballRb.linearVelocity = Vector3.zero;
             ballRb.angularVelocity = Vector3.zero;
             ballRb.useGravity = false;
         }

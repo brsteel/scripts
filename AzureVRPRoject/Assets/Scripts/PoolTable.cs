@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
+using UnityEngine.XR.Interaction.Toolkit.Interactables;
 using System.Collections.Generic;
 
 public class PoolTable : MonoBehaviour
@@ -12,9 +13,9 @@ public class PoolTable : MonoBehaviour
     public float cushionHeight = 0.03f;     // Height of cushions above surface
     
     [Header("Physics Materials")]
-    public PhysicMaterial ballPhysicsMaterial;
-    public PhysicMaterial tablePhysicsMaterial;
-    public PhysicMaterial cushionPhysicsMaterial;
+    public PhysicsMaterial ballPhysicsMaterial;
+    public PhysicsMaterial tablePhysicsMaterial;
+    public PhysicsMaterial cushionPhysicsMaterial;
     
     [Header("Ball Settings")]
     public GameObject ballPrefab;
@@ -281,8 +282,8 @@ public class PoolTable : MonoBehaviour
         if (rb == null) rb = ball.AddComponent<Rigidbody>();
         
         rb.mass = 0.17f; // Standard pool ball weight in kg
-        rb.drag = 0.3f;
-        rb.angularDrag = 0.5f;
+        rb.linearDamping = 0.3f;
+        rb.angularDamping = 0.5f;
         
         // Apply physics material
         Collider ballCollider = ball.GetComponent<Collider>();
@@ -378,18 +379,18 @@ public class PoolTable : MonoBehaviour
         // Create ball physics material if not assigned
         if (ballPhysicsMaterial == null)
         {
-            ballPhysicsMaterial = new PhysicMaterial("BallPhysics");
+            ballPhysicsMaterial = new PhysicsMaterial("BallPhysics");
             ballPhysicsMaterial.dynamicFriction = 0.1f;
             ballPhysicsMaterial.staticFriction = 0.1f;
             ballPhysicsMaterial.bounciness = 0.8f;
-            ballPhysicsMaterial.frictionCombine = PhysicMaterialCombine.Average;
-            ballPhysicsMaterial.bounceCombine = PhysicMaterialCombine.Average;
+            ballPhysicsMaterial.frictionCombine = PhysicsMaterialCombine.Average;
+            ballPhysicsMaterial.bounceCombine = PhysicsMaterialCombine.Average;
         }
         
         // Create table physics material if not assigned
         if (tablePhysicsMaterial == null)
         {
-            tablePhysicsMaterial = new PhysicMaterial("TablePhysics");
+            tablePhysicsMaterial = new PhysicsMaterial("TablePhysics");
             tablePhysicsMaterial.dynamicFriction = 0.3f;
             tablePhysicsMaterial.staticFriction = 0.3f;
             tablePhysicsMaterial.bounciness = 0.1f;
@@ -398,7 +399,7 @@ public class PoolTable : MonoBehaviour
         // Create cushion physics material if not assigned
         if (cushionPhysicsMaterial == null)
         {
-            cushionPhysicsMaterial = new PhysicMaterial("CushionPhysics");
+            cushionPhysicsMaterial = new PhysicsMaterial("CushionPhysics");
             cushionPhysicsMaterial.dynamicFriction = 0.2f;
             cushionPhysicsMaterial.staticFriction = 0.2f;
             cushionPhysicsMaterial.bounciness = 0.9f;
@@ -466,7 +467,7 @@ public class PoolTable : MonoBehaviour
         {
             cueBall.transform.localPosition = new Vector3(-tableWidth/4, ballRadius + 0.03f, 0);
             Rigidbody cueBallRb = cueBall.GetComponent<Rigidbody>();
-            cueBallRb.velocity = Vector3.zero;
+            cueBallRb.linearVelocity = Vector3.zero;
             cueBallRb.angularVelocity = Vector3.zero;
         }
         
@@ -498,7 +499,7 @@ public class PoolTable : MonoBehaviour
             GameObject ball = poolBalls[i];
             ball.transform.localPosition = rackPosition + rackPositions[i - 1];
             Rigidbody ballRb = ball.GetComponent<Rigidbody>();
-            ballRb.velocity = Vector3.zero;
+            ballRb.linearVelocity = Vector3.zero;
             ballRb.angularVelocity = Vector3.zero;
         }
     }

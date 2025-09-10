@@ -42,7 +42,7 @@ public class PoolCushion : MonoBehaviour
         Vector3 normal = contact.normal;
         
         Rigidbody ballRb = ball.GetComponent<Rigidbody>();
-        Vector3 velocity = ballRb.velocity;
+        Vector3 velocity = ballRb.linearVelocity;
         
         // Calculate reflection
         Vector3 reflectedVelocity = Vector3.Reflect(velocity, normal);
@@ -55,7 +55,7 @@ public class PoolCushion : MonoBehaviour
         Vector3 frictionForce = -parallelComponent * friction;
         
         // Set new velocity
-        ballRb.velocity = reflectedVelocity + frictionForce;
+        ballRb.linearVelocity = reflectedVelocity + frictionForce;
         
         // Add slight random variation for realism
         Vector3 randomVariation = new Vector3(
@@ -64,7 +64,7 @@ public class PoolCushion : MonoBehaviour
             Random.Range(-0.1f, 0.1f)
         ) * 0.05f;
         
-        ballRb.velocity += randomVariation;
+        ballRb.linearVelocity += randomVariation;
         
         // Ensure ball doesn't stick to cushion
         Vector3 separation = contact.point + normal * (ball.transform.localScale.x * 0.5f + 0.01f);
