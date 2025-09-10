@@ -64,7 +64,8 @@ public class PoolCueStick : XRGrabInteractable
     void SetupAimingLine()
     {
         aimingLine.material = new Material(Shader.Find("Sprites/Default"));
-        aimingLine.color = Color.white;
+        aimingLine.startColor = Color.white;
+        aimingLine.endColor = Color.white;
         aimingLine.startWidth = 0.005f;
         aimingLine.endWidth = 0.005f;
         aimingLine.positionCount = linePoints;

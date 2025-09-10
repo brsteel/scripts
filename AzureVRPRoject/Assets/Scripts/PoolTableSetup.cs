@@ -51,7 +51,7 @@ public class PoolTableSetup : MonoBehaviour
     [ContextMenu("Delete Pool Table")]
     public void DeletePoolTable()
     {
-        PoolTable existingTable = FindObjectOfType<PoolTable>();
+        PoolTable existingTable = FindFirstObjectByType<PoolTable>();
         if (existingTable != null)
         {
             if (Application.isPlaying)

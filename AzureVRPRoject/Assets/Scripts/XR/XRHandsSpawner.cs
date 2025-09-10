@@ -31,7 +31,7 @@ namespace AzureVR
             int frame = 0;
             while (_origin == null && frame < maxFrames)
             {
-                _origin = FindObjectOfType<XROrigin>();
+                _origin = FindFirstObjectByType<XROrigin>();
                 if (_origin != null) break;
                 yield return null; frame++;
             }
