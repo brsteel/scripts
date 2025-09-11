@@ -91,3 +91,30 @@ AzureVRPRoject/UserSettings/
 # Large asset packages
 AzureVRPRoject/Assets/ALP_Assets/
 AzureVRPRoject/Assets/TerrainTexturesPackFree/
+
+# Third-party packages and dependencies
+temp-nuget/
+**/node_modules/
+**/package-lock.json
+**/packages-lock.json
+*.zip
+*.rar
+*.7z
+
+# Unity Package Cache and other generated files
+**/Library/PackageCache/
+**/Library/
+**/Temp/
+**/Logs/
+**/UserSettings/
+
+# 3D Game Kit specific ignores (Unity project)
+3D Game Kit/Library/
+3D Game Kit/Temp/
+3D Game Kit/Logs/
+3D Game Kit/UserSettings/
+3D Game Kit/*.csproj
+3D Game Kit/*.sln
+
+# TextMesh Pro examples and assets (part of Unity packages)
+**/TextMesh Pro/Examples & Extras/
