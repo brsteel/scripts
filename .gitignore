@@ -108,13 +108,8 @@ temp-nuget/
 **/Logs/
 **/UserSettings/
 
-# 3D Game Kit specific ignores (Unity project)
-3D Game Kit/Library/
-3D Game Kit/Temp/
-3D Game Kit/Logs/
-3D Game Kit/UserSettings/
-3D Game Kit/*.csproj
-3D Game Kit/*.sln
+# 3D Game Kit specific ignores (Unity project) - exclude entire directory
+3D Game Kit/
 
 # TextMesh Pro examples and assets (part of Unity packages)
 **/TextMesh Pro/Examples & Extras/
