@@ -1,2 +1,0 @@
-// Placeholder for Unity Assembly Definition suggestion:
-// Create an .asmdef file named AzureVR to isolate dependencies if desired.
