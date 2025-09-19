@@ -1,0 +1,14 @@
+# YouTube Auto-Uploader Requirements
+# Install with: pip install -r requirements.txt
+
+google-auth-oauthlib>=1.0.0
+google-auth>=2.0.0  
+google-api-python-client>=2.0.0
+google-auth-httplib2>=0.1.0
+
+# Optional: For advanced scheduling (recommended)
+python-dateutil>=2.8.0
+
+# Optional: For advanced video analysis (uncomment if needed)
+# ffmpeg-python>=0.2.0
+# opencv-python>=4.5.0
