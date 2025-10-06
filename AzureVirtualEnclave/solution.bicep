@@ -23,7 +23,9 @@ For detailed parameter documentation, see the individual parameter descriptions 
 @description('The Azure region where resources will be deployed')
 param location string = deployment().location
 
-@description('Base name for the deployment - will be used as a prefix for all resources (e.g., "myave" creates "myave-rg", "myave-community-0")')
+@description('Base name for the deployment. MUST be short because the RP creates hosted RGs like <name>-HostedResources-<nonce>.')
+@minLength(3)
+@maxLength(24)
 param baseName string
 
 
@@ -36,20 +38,14 @@ var canonicalLocation = toLower(replace(location, ' ', ''))
 // ---- Name Length Guardrails --------------------------------------------------
 // Verbose pattern: <base>-community-<ci>-enclave-<ei>
 // Compact pattern: <base>c<ci>e<ei>
-var maxCommunityIndexDigits = length(string(numberOfCommunities - 1))
-var maxEnclaveIndexDigits   = length(string(numberOfEnclavesPerCommunity - 1))
-// Compact naming fixed pattern: <base>c<ci>e<ei>
-var compactFixed = 2  // 'c' + 'e'
-var activeMaxBaseAllowed = 30 - compactFixed - maxCommunityIndexDigits - maxEnclaveIndexDigits
-var baseNameLengthViolationMessage = length(baseName) <= activeMaxBaseAllowed ? '' : 'ERROR: baseName "${baseName}" length ${length(baseName)} exceeds allowed ${activeMaxBaseAllowed} (limit 30) for selected naming mode.'
-
-// Deliberately reference a non-existent function if violation to force compile/deploy error with our message.
-// (Bicep/ARM won't evaluate the concat branch unless condition triggers.)
-// Implement guard by creating a no-op deployment with a name that encodes the error when violated.
-// Deployment names must be <=64 chars; we truncate if needed.
-// Fallback: Emit a warning-like output when violation exists; deployment will still proceed (cannot hard-stop without experimental asserts).
-// Consumers (pipelines) can parse this output and fail the build.
-output baseNameLengthWarning string = empty(baseNameLengthViolationMessage) ? '' : baseNameLengthViolationMessage
+// Name inflation (documentation aid only): hosted RG adds ~30 chars. With max baseName=24 this leaves ample headroom.
+var projectedCommunityHostedRgLength = length('${baseName}c0') + 30
+var projectedEnclaveHostedRgLength   = length('${baseName}c0e0') + 30
+output hostedNameAnalysis object = {
+  baseName: baseName
+  projectedCommunityHostedRgLength: projectedCommunityHostedRgLength
+  projectedEnclaveHostedRgLength: projectedEnclaveHostedRgLength
+}
 
 @description('Number of Azure Virtual Enclave communities to deploy (1-10). Must match the length of communityConfigs array.')
 @minValue(1)

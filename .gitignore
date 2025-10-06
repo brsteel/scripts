@@ -1,7 +1,12 @@
+<<<<<<< HEAD
 # This .gitignore file should be placed at the root of your Unity project directory
 #
 # Get latest from https://github.com/github/gitignore/blob/master/Unity.gitignore
 #
+=======
+# Root ignore combining Unity + Unreal + Python + Node + local tooling
+# Unity standard ignores (trimmed)
+>>>>>>> 3726ac3 (AVE: enforce baseName length, remove helper scripts, add focused param files; repo hygiene: improved .gitignore (Unity+Unreal+Python))
 /[Ll]ibrary/
 /[Tt]emp/
 /[Oo]bj/
@@ -10,6 +15,7 @@
 /[Ll]ogs/
 /[Mm]emoryCaptures/
 
+<<<<<<< HEAD
 # Asset meta data should only be ignored when the corresponding asset is also ignored
 !/[Aa]ssets/**/*.meta
 
@@ -66,6 +72,35 @@ crashlytics-build.properties
 /[Aa]ssets/[Ss]treamingAssets/aa/*
 
 # Large texture files that should use Git LFS
+=======
+# Keep meta when asset tracked
+!/[Aa]ssets/**/*.meta
+
+# Rider plugin
+[Aa]ssets/Plugins/Editor/JetBrains*
+
+# VS / IDE
+.vs/
+*.sln
+*.csproj
+*.unityproj
+*.user
+*.userprefs
+
+# Crash / temp
+sysinfo.txt
+
+# Unity builds
+*.apk
+*.unitypackage
+
+# Addressables
+/[Aa]ssets/[Aa]ddressable[Aa]ssets[Dd]ata/*/*.bin*
+/[Aa]ssets/[Ss]treamingAssets/aa.meta
+/[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# Large textures default to LFS (optional) but allow smaller essential ones override later
+>>>>>>> 3726ac3 (AVE: enforce baseName length, remove helper scripts, add focused param files; repo hygiene: improved .gitignore (Unity+Unreal+Python))
 *.tif
 *.tiff
 *.png
@@ -75,19 +110,27 @@ crashlytics-build.properties
 *.hdr
 *.unity
 *.asset
+<<<<<<< HEAD
 
 # But allow smaller essential textures
+=======
+>>>>>>> 3726ac3 (AVE: enforce baseName length, remove helper scripts, add focused param files; repo hygiene: improved .gitignore (Unity+Unreal+Python))
 !/[Aa]ssets/**/*.png
 !/[Aa]ssets/**/*.jpg
 !/[Aa]ssets/**/*.jpeg
 
+<<<<<<< HEAD
 # Allow important Unity files but ignore large ones
+=======
+# Project specific large dirs
+>>>>>>> 3726ac3 (AVE: enforce baseName length, remove helper scripts, add focused param files; repo hygiene: improved .gitignore (Unity+Unreal+Python))
 AzureVRPRoject/Library/
 AzureVRPRoject/Temp/
 AzureVRPRoject/Logs/
 AzureVRPRoject/MemoryCaptures/
 AzureVRPRoject/UserSettings/
 
+<<<<<<< HEAD
 # Large asset packages
 AzureVRPRoject/Assets/ALP_Assets/
 AzureVRPRoject/Assets/TerrainTexturesPackFree/
@@ -97,10 +140,55 @@ temp-nuget/
 **/node_modules/
 **/package-lock.json
 **/packages-lock.json
+=======
+# 3D Game Kit (exclude entirely)
+3D Game Kit/
+
+# TextMesh Pro examples
+**/TextMesh Pro/Examples & Extras/
+
+# Unreal Engine ignores
+MyProject/Binaries/
+MyProject/DerivedDataCache/
+MyProject/Intermediate/
+MyProject/Saved/
+MyProject/.vs/
+AzureVrProject/Binaries/
+AzureVrProject/DerivedDataCache/
+AzureVrProject/Intermediate/
+AzureVrProject/Saved/
+AzureVrProject/.vs/
+
+# Unreal generated project intermediates
+*.VC.db
+*.pdb
+*.opendb
+
+# Python
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.python-version
+.venv/
+venv/
+ENV/
+env/
+
+# Node
+**/node_modules/
+**/package-lock.json
+**/packages-lock.json
+**/dist/
+**/coverage/
+
+# Archives
+>>>>>>> 3726ac3 (AVE: enforce baseName length, remove helper scripts, add focused param files; repo hygiene: improved .gitignore (Unity+Unreal+Python))
 *.zip
 *.rar
 *.7z
 
+<<<<<<< HEAD
 # Unity Package Cache and other generated files
 **/Library/PackageCache/
 **/Library/
@@ -113,3 +201,24 @@ temp-nuget/
 
 # TextMesh Pro examples and assets (part of Unity packages)
 **/TextMesh Pro/Examples & Extras/
+=======
+# NuGet/temp
+temp-nuget/
+**/Library/PackageCache/
+
+# Logs
+*.log
+
+# Secrets (never commit real credentials)
+SEOOptimizer/client_secret_*.json
+
+# Local scripts / system
+clear_unity_cache.bat
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Legacy Unity project directory (deleted upstream) - ignore if regenerated locally
+AzureVRPRoject/
+>>>>>>> 3726ac3 (AVE: enforce baseName length, remove helper scripts, add focused param files; repo hygiene: improved .gitignore (Unity+Unreal+Python))
