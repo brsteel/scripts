@@ -1,48 +1,28 @@
 # Azure Virtual Enclave Infrastructure
 
-This Bicep solution deploys a scalable Azure Virtual Enclave infrastructure with the following architecture:
+This Bicep solution deploys **only the native Azure Virtual Enclave control-plane resources** (Communities, Virtual Enclaves, Workloads) using the `Microsoft.Mission` preview provider. It does **not** (currently) create VMs, Key Vaults, NSGs, or other downstream workload assets – those are added later by you inside the resource groups referenced by each workload. Earlier drafts of this README implied VM, NSG, and Key Vault deployment; that has been corrected for accuracy.
 
 ## Architecture Overview
 
 ```text
-Subscription
-└── Resource Group
-    ├── Community 1
-    │   ├── Virtual Network (10.0.0.0/16)
-    │   ├── Network Security Group
-    │   ├── Enclave 1
-    │   │   ├── Subnet (10.0.0.0/24)
-    │   │   ├── Availability Set
-    │   │   ├── Key Vault
-    │   │   ├── Workload 1 (VM + Confidential Computing)
-    │   │   ├── Workload 2 (VM + Confidential Computing)
-    │   │   └── ...
-    │   ├── Enclave 2
-    │   │   ├── Subnet (10.0.1.0/24)
-    │   │   └── ...
-    │   └── ...
-    ├── Community 2
-    │   ├── Virtual Network (10.1.0.0/16)
-    │   └── ...
-    └── ...
+Subscription (deployment scope)
+└── Resource Group (container created by template)
+  └── Community (Microsoft.Mission/communities)
+    └── Virtual Enclaves (Microsoft.Mission/virtualEnclaves)
+      └── Workloads (Microsoft.Mission/virtualEnclaves/workloads)  <-- container objects only
 ```
 
 ## Features
 
-- **Scalable Architecture**: Deploy N communities, M enclaves per community, O workloads per enclave (compact naming is now the default and enforced; legacy verbose pattern removed to stay under preview name limits)
-- **Confidential Computing**: Uses DCsv3 series VMs with hardware-based trusted execution environments
-- **Network Isolation**: Each community has its own virtual network with isolated subnets per enclave
-- **Security**:
-  - **Azure Virtual Enclave (AVE)**: Native secure connectivity and access management
-  - Disk encryption with customer-managed keys
-  - Key Vault for secret management
-  - Network security groups with least privilege access
-  - Managed identities for secure resource access
-  - Schema-compliant RBAC via Microsoft.Mission roleAssignment collections: provide Entra ID group object IDs for role buckets (Contributor, Reader, NetworkContributor, MonitoringReader/Contributor, LogAnalyticsReader/Contributor, SecurityReader/Admin, UserAccessAdministrator). Each becomes a RoleAssignmentItem with roleDefinitionId + principals[]. Empty arrays = no assignment.
-  - Per-community and per-enclave Maintenance Mode (mode Off by default) with optional principals and justification.
-  - Diagnostic destination control (CommunityOnly | EnclaveOnly | Both) per enclave with module-level default.
-- **High Availability**: Availability sets for workload distribution
-- **Attestation**: Built-in attestation services for confidential computing verification
+- **Declarative Scaling**: Define any number of communities, each with an arbitrary array of enclaves, each with an arbitrary array of workload containers (no deprecated scalar count parameters).
+- **Isolation Model**: Logical segregation via native Mission RP constructs (no VNets are created by this template — the RP manages underlying hosted constructs internally).
+- **Explicit Azure RBAC**: Standard `Microsoft.Authorization/roleAssignments` with clearable inheritance (empty array = clear) and a summarized `rbacSummary` output.
+- **Governance Hooks**: Optional governed service list emission (feature toggled) and maintenance mode object support (mode + principals + justification guardrail).
+- **Diagnostics Defaults**: Central `diagnosticDestinationDefault` applied unless overridden per enclave.
+- **Preview-Friendly Naming**: Compact naming always enforced to stay within preview constraints.
+- **Auditing Outputs**: Hierarchical RBAC + maintenance info surfaces via deployment outputs for automation.
+
+> NOTE: Add your actual application resources (VMs, PaaS, databases, etc.) separately inside the workload-declared resource groups after deployment. This template purposefully limits itself to control-plane objects while the RP is in preview.
 
 ## Documentation
 
@@ -57,19 +37,17 @@ Subscription
 
 ```text
 AzureVirtualEnclave/
-├── solution.bicep                    # Main deployment template
-├── solution.bicepparam              # Simple development parameters  
-├── solution.minimal.bicepparam      # Minimal setup parameters
-├── QUICK-START.md                   # Quick deployment guide
-├── NESTED-CONFIG-GUIDE.md          # Advanced configuration guide
-├── PARAMETERS.md                    # Comprehensive parameter documentation
-├── NETWORK-PLANNING.md             # Network configuration examples
-├── deploy.ps1                      # PowerShell deployment script
+├── solution.bicep             # Main subscription-scope template
+├── solution.bicepparam        # Example parameter file (edit for your layout)
+├── QUICK-START.md             # Getting started (will be pruned if redundant)
+├── NESTED-CONFIG-GUIDE.md     # Deep dive: nested arrays & patterns
+├── PARAMETERS.md              # Parameter reference (kept lean & current)
+├── NETWORK-PLANNING.md        # Address space planning (logical guidance)
 ├── README.md                  # This file
 └── modules/
-    ├── community.bicep        # Community-level resources
-    ├── enclave.bicep          # Enclave-level resources
-    └── workload.bicep         # Individual workload resources
+  ├── ave-community.bicep    # Community module
+  ├── ave-enclave.bicep      # Enclave module
+  └── ave-workload.bicep     # Workload module
 ```
 
 ## Prerequisites
@@ -77,7 +55,7 @@ AzureVirtualEnclave/
 - Azure CLI installed and configured
 - Bicep CLI installed (or use `az bicep install`)
 - Azure subscription with appropriate permissions
-- PowerShell 5.1 or later (for deployment script)
+- (Optional) PowerShell / Bash shell for running Azure CLI commands
 
 ### RBAC Role Assignment Model (Explicit ARM RBAC – Inline AVE RBAC Disabled)
 
@@ -242,20 +220,7 @@ Enclave/workload group object IDs are supplied similarly (see module parameter n
 
 ## Quick Start
 
-### Option 1: Using PowerShell Script (Recommended)
-
-```powershell
-# Basic deployment with default parameters
-.\deploy.ps1
-
-# Custom deployment (edit nested arrays in solution.bicepparam for enclaves/workloads)
-./deploy.ps1 -BaseName "myenclave" -Location "West US 2" -NumberOfCommunities 3
-
-# What-if deployment (preview changes)
-.\deploy.ps1 -WhatIf
-```
-
-### Option 2: Using Azure CLI directly
+### Deployment (Azure CLI)
 
 ```bash
 # Set environment variable for admin password
@@ -269,7 +234,7 @@ az deployment sub create \
   --parameters solution.bicepparam
 ```
 
-### Option 3: Using custom parameters
+### Override Inline (discouraged for large topologies)
 
 ```bash
 az deployment sub create \
@@ -287,52 +252,37 @@ az deployment sub create \
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `baseName` | string | - | Base name prefix for all resources |
-| `location` | string | deployment location | Azure region for deployment |
-| `numberOfCommunities` | int | 2 | Number of communities to deploy (1-10). Must match `communityConfigs` array length. |
-| `adminPassword` | securestring | - | Admin password for VMs |
-| `enclaveConfig` | object | see params | VM size, networking, and other config |
+| `location` | string | deployment().location | Azure region for deployment |
+| `numberOfCommunities` | int | 2 | Must equal `length(communityConfigs)` (1–10) |
+| `communityConfigs` | array | [] | Nested community → enclave → workload configuration objects |
+| `deployEnclaves` | bool | true | Skip enclaves/workloads when false (community-only phase) |
+| `enableGovernedServiceList` | bool | false | Emit governedServiceList (preview – optional) |
+| `diagnosticDestinationDefault` | string | Both | Default diagnostic routing (`EnclaveOnly`\|`Both`) |
+| `contributorPrincipals` | array | [] | Principals (object IDs) for Contributor inheritance |
+| `communityReaders` (etc.) | array | [] | Optional role bucket arrays (empty = none) |
+| `tags` | object | basic set | Applied to created resource group + child deployments |
 | `tags` | object | see params | Resource tags |
 
 ## Enclave Configuration
 
-The `enclaveConfig` object supports the following properties:
+Each `enclaveConfigs[]` entry supports (current subset):
 
-```json
-{
-  "vmSize": "Standard_DC2s_v3",        // Confidential Computing VM size
-  "adminUsername": "azureuser",         // VM admin username
-  "virtualNetworkAddressPrefix": "10.0.0.0/16",  // Base network CIDR
-  "subnetAddressPrefix": "10.0.0.0/24"  // Base subnet CIDR
-}
-```
-
-### Supported VM Sizes for Confidential Computing
-
-- `Standard_DC2s_v3` - 2 vCPUs, 8 GB RAM
-- `Standard_DC4s_v3` - 4 vCPUs, 16 GB RAM  
-- `Standard_DC8s_v3` - 8 vCPUs, 32 GB RAM
-- `Standard_DC16s_v3` - 16 vCPUs, 64 GB RAM
-- `Standard_DC32s_v3` - 32 vCPUs, 128 GB RAM
+| Field | Required | Description |
+|-------|----------|-------------|
+| `bastionEnabled` | yes | Boolean flag passed to RP (preview – behavior may evolve) |
+| `networkName` | yes | Logical name for enclave virtual network construct (RP-managed) |
+| `networkSize` | yes | `/24` `/25` `/26` or `'custom'` (with `customCidrRange`) |
+| `customCidrRange` | conditional | Required only when `networkSize == 'custom'` |
+| `allowSubnetCommunication` | yes | Boolean – preview connectivity toggle |
+| `connectToAzureServices` | yes | Boolean passthrough (RP field) |
+| `diagnosticDestination` | optional | Overrides module default (`EnclaveOnly`\|`Both`) |
+| `maintenance` | optional | `{ mode: 'On'\|'Off', principals?:[], justification?:'' }` |
+| `rbac` | optional | Role bucket overrides (presence-based, empty clears) |
+| `workloadConfigs` | array | Child workloads (containers) |
 
 ## Network Architecture
 
-Each community receives its own `/16` address space:
-
-- Community 0: `10.0.0.0/16`
-- Community 1: `10.1.0.0/16`
-- Community N: `10.N.0.0/16`
-
-Within each community, enclaves get `/24` subnets:
-
-- Enclave 0: `10.N.0.0/24`
-- Enclave 1: `10.N.1.0/24`
-- Enclave M: `10.N.M.0/24`
-
-Workloads receive static IPs starting from `.10`:
-
-- Workload 0: `10.N.M.10`
-- Workload 1: `10.N.M.11`
-- Workload O: `10.N.M.(10+O)`
+> The Mission RP abstracts underlying network implementation details. Treat `addressSpace`, `networkSize`, and `customCidrRange` as **logical intent inputs** — the RP owns final realization.
 
 ## Enclave Network Sizing & Guardrails
 
@@ -415,7 +365,7 @@ All scaling is controlled by nested arrays inside `communityConfigs` (parameter 
 | Test | 2 | 4 | 12 |
 | Prod (illustrative) | 5 | 15 | 60 |
 
-Counts are illustrative; adapt `communityConfigs[*].enclaveConfigs[*].workloadConfigs` accordingly.
+Counts are illustrative; adapt `communityConfigs[*].enclaveConfigs[*].workloadConfigs` accordingly. For an authoritative count, inspect your parameter file or extend the template with custom outputs once Bicep adds richer aggregation functions.
 
 ## Accessing Virtual Machines
 
@@ -474,21 +424,19 @@ After deployment, you can monitor your infrastructure using:
 3. **Key Vault Access**: Ensure proper RBAC permissions
 4. **VM Boot Issues**: Check boot diagnostics in Azure Portal
 
-### Preview Known Issues (US Gov Azure Virtual Enclave)
+### Preview Known Issues (updated)
 
 | Issue | Description | Mitigation |
 |-------|-------------|------------|
 | approvalSettings BadRequest | Any non-null approvalSettings payload returns BadRequest | Omit approvalSettings (template omits by default) |
-| Enclave name length >30 | Verbose name pattern can exceed limit | Enable compact naming (`useCompactNames=true`) or shorten `baseName` |
+| Enclave name length >30 | Verbose name pattern can exceed limit | Compact naming now enforced automatically |
 | Virtual Hub InternalServerError | Intermittent failure provisioning virtual hub | Retry minimal (community+one enclave); capture correlationId; check Activity Log |
 
 
 
-### Naming Pattern (Fixed Compact)
+### Naming Pattern
 
-Enclave name pattern is permanently compact to stay below RP preview limits: `<baseName>c<communityIndex>e<enclaveIndex>`
-
-Hosted managed resource group names are auto-generated by the RP and can add ~30 characters. Keep `baseName` short (<=24 chars) to leave headroom.
+`<baseName>c<communityIndex>e<enclaveIndex>` – fixed compact form. Keep `baseName` ≤ 24 chars to account for RP‑added hosted resource group suffixes.
 
 
 
