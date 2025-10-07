@@ -273,7 +273,13 @@ Community: <baseName>c<communityIndex>
 Enclave:   <baseName>c<communityIndex>e<enclaveIndex>
 ```
 
-Because `baseName` has a max length of 24, single‑digit indices leave a small buffer (name length = baseName length + 2 or +4). If you anticipate multi‑digit indices or future naming evolution, keep `baseName` comfortably below 22 characters.
+The template now constrains `baseName` to a maximum of 28 characters. With the compact pattern:
+
+```text
+<baseName>c<index>
+```
+
+Even the longest single‑digit community name will be at most 30 characters (portal limit). If you plan for more than 9 communities (rare), reduce `baseName` length accordingly (e.g. keep it ≤27 to allow `c10`).
 
 The deployment output `hostedNameAnalysis` surfaces:
 

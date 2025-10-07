@@ -25,7 +25,7 @@ param location string = deployment().location
 
 @description('Base name for the deployment. MUST be short because the RP creates hosted RGs like <name>-HostedResources-<nonce>.')
 @minLength(3)
-@maxLength(24)
+@maxLength(28) // 28 + 'c9' (2 chars) = 30 max community name length (portal limit)
 param baseName string
 
 
