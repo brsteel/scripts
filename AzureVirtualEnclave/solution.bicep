@@ -41,10 +41,25 @@ var canonicalLocation = toLower(replace(location, ' ', ''))
 // Name inflation (documentation aid only): hosted RG adds ~30 chars. With max baseName=24 this leaves ample headroom.
 var projectedCommunityHostedRgLength = length('${baseName}c0') + 30
 var projectedEnclaveHostedRgLength   = length('${baseName}c0e0') + 30
+// Portal hard limit: AVE community resource name must be <= 30 characters.
+// Given pattern '${baseName}c<i>' and baseName maxLength 24 (enforced above), worst case (i up to 9) length = baseNameLen + 2.
+// For enclave names ('${baseName}c<i>e<j>') worst case adds 4 chars total.
+var communityNameLengthLimit = 30
+var longestCommunityName = '${baseName}c${numberOfCommunities - 1}'
+var longestEnclaveName = '${baseName}c${numberOfCommunities - 1}e0'
+var communityNameWithinLimit = length(longestCommunityName) <= communityNameLengthLimit
+var enclaveNameWithinLimit = length(longestEnclaveName) <= communityNameLengthLimit
 output hostedNameAnalysis object = {
   baseName: baseName
   projectedCommunityHostedRgLength: projectedCommunityHostedRgLength
   projectedEnclaveHostedRgLength: projectedEnclaveHostedRgLength
+  portalCommunityNameLimit: communityNameLengthLimit
+  longestCommunityName: longestCommunityName
+  longestCommunityNameLength: length(longestCommunityName)
+  longestEnclaveName: longestEnclaveName
+  longestEnclaveNameLength: length(longestEnclaveName)
+  communityNameWithinLimit: communityNameWithinLimit
+  enclaveNameWithinLimit: enclaveNameWithinLimit
 }
 
 @description('Number of Azure Virtual Enclave communities to deploy (1-10). Must match length(communityConfigs). Typical deployments use 1; increase only when you need strict separation (e.g. multi-mission staging, distinct governance).')

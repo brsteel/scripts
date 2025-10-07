@@ -262,6 +262,27 @@ az deployment sub create \
 | `tags` | object | basic set | Applied to created resource group + child deployments |
 | `tags` | object | see params | Resource tags |
 
+### Naming & Length Constraints
+
+Portal-enforced limit: each AVE community resource name must be <= 30 characters.
+
+This template uses a compact pattern for community and enclave names:
+
+```text
+Community: <baseName>c<communityIndex>
+Enclave:   <baseName>c<communityIndex>e<enclaveIndex>
+```
+
+Because `baseName` has a max length of 24, single‑digit indices leave a small buffer (name length = baseName length + 2 or +4). If you anticipate multi‑digit indices or future naming evolution, keep `baseName` comfortably below 22 characters.
+
+The deployment output `hostedNameAnalysis` surfaces:
+
+- Longest prospective community & enclave names
+- Their lengths
+- Whether they fall within the 30‑character limit
+
+If you exceed the limit (e.g. long `baseName` + multi‑digit indices), the RP/portal will reject creation—adjust `baseName` accordingly.
+
 ## Enclave Configuration
 
 Each `enclaveConfigs[]` entry supports (current subset):
