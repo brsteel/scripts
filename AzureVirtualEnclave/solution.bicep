@@ -61,12 +61,7 @@ output hostedNameAnalysis object = {
   enclaveNameWithinLimit: enclaveNameWithinLimit
 }
 
-@description('Number of Azure Virtual Enclave communities to deploy (1-10). Must match length(communityConfigs). Typical deployments use 1; increase only when you need strict separation (e.g. multi-mission staging, distinct governance).')
-@minValue(1)
-@maxValue(10)
-param numberOfCommunities int = 1
-
-// Note: communityConfigs array must have exactly numberOfCommunities entries
+// Single-community template: communityConfigs must contain exactly one object
 
 // Note: The following simple parameters are used for validation and loops
 // Actual enclave and workload configurations are defined within each community's config
@@ -110,10 +105,8 @@ param communityUserAccessAdministrators array = []
 
 // Maintenance validation (simple guardrail) - if any community maintenance object sets mode On but missing justification, template could be extended to fail (future enhancement)
 
-@description('Array of community configurations with nested enclave and workload configurations.')
-param communityConfigs array = [
-  // Community 0 (default / primary). Add additional objects to this array when numberOfCommunities > 1.
-  {
+@description('Community configuration (single object) with nested enclave and workload configurations.')
+param communityConfig object = {
     // Community-level Network Configuration - MUST be unique per community
     addressSpace: '10.0.0.0/16'
     dnsServers: []
@@ -164,10 +157,8 @@ param communityConfigs array = [
       }
     ]
   }
-]
 
-// Note: Enclave and workload configurations are now nested within communityConfigs array
-// This allows for individual configuration of each enclave and workload
+// Single community; nested enclaves/workloads configured above
 
 @description('Tags to apply to all resources')
 param tags object = {
@@ -183,17 +174,16 @@ resource mainResourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' = {
   tags: tags
 }
 
-// Deploy AVE Communities using native Microsoft.Mission resources
-module communities 'modules/ave-community.bicep' = [for i in range(0, numberOfCommunities): {
-  name: 'ave-community-${i}' // deployment name retains index for output clarity
+// Deploy single AVE Community using native Microsoft.Mission resources
+module community 'modules/ave-community.bicep' = {
+  name: 'ave-community'
   scope: mainResourceGroup
   params: {
     location: canonicalLocation
-  communityName: baseName // rely on distinct baseName values if >1 community is desired
-  // useCompactNames removed; always compact
+    communityName: baseName
     deployEnclaves: deployEnclaves
-    communityConfig: communityConfigs[i]  // Pass entire community config with nested enclaves/workloads
-    tags: union(tags, { CommunityIndex: string(i) })
+    communityConfig: communityConfig
+    tags: tags
     communityContributors: contributorPrincipals
     communityReaders: communityReaders
     communityNetworkContributors: communityNetworkContributors
@@ -207,23 +197,16 @@ module communities 'modules/ave-community.bicep' = [for i in range(0, numberOfCo
     enableGovernedServiceList: enableGovernedServiceList
     diagnosticDestinationDefault: diagnosticDestinationDefault
   }
-}]
+}
 
 // Outputs
 output resourceGroupName string = mainResourceGroup.name
-output deployedCommunities array = [for i in range(0, numberOfCommunities): {
-  name: baseName
-  resourceGroupName: mainResourceGroup.name
-  location: canonicalLocation
-  resourceId: communities[i].outputs.communityResourceId
-}]
-// Simplified totalResources output (derived enclave/workload counts omitted due to current Bicep aggregation limitations)
+output communityResourceId string = community.outputs.communityResourceId
 output totalResources object = {
-  communities: numberOfCommunities
+  communities: 1
   deployEnclaves: deployEnclaves
 }
-
-// Hierarchical RBAC summary (array of community summaries)
-output rbacSummary array = [for i in range(0, numberOfCommunities): communities[i].outputs.rbacSummary]
+// rbacSummary from module is already an array; pass through directly
+output rbacSummary object = community.outputs.rbacSummary
 
 output effectiveLocation string = canonicalLocation
