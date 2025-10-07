@@ -47,10 +47,10 @@ output hostedNameAnalysis object = {
   projectedEnclaveHostedRgLength: projectedEnclaveHostedRgLength
 }
 
-@description('Number of Azure Virtual Enclave communities to deploy (1-10). Must match the length of communityConfigs array.')
+@description('Number of Azure Virtual Enclave communities to deploy (1-10). Must match length(communityConfigs). Typical deployments use 1; increase only when you need strict separation (e.g. multi-mission staging, distinct governance).')
 @minValue(1)
 @maxValue(10)
-param numberOfCommunities int = 2
+param numberOfCommunities int = 1
 
 // Note: communityConfigs array must have exactly numberOfCommunities entries
 
@@ -98,7 +98,7 @@ param communityUserAccessAdministrators array = []
 
 @description('Array of community configurations with nested enclave and workload configurations.')
 param communityConfigs array = [
-  // Community 0 - Development Environment
+  // Community 0 (default / primary). Add additional objects to this array when numberOfCommunities > 1.
   {
     // Community-level Network Configuration - MUST be unique per community
     addressSpace: '10.0.0.0/16'

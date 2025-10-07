@@ -10,7 +10,7 @@ This document captures the **current, supported** parameters for the subscriptio
 |------|------|---------|----------|-------------|
 | `location` | string | `deployment().location` | No | Azure region for the deployment (canonicalized internally). |
 | `baseName` | string | n/a | Yes | Short base name prefix; used for resource group & community naming (`<baseName>-rg`, `<baseName>c0`). Keep ≤ 24 chars. |
-| `numberOfCommunities` | int | `2` | Yes | Must equal `length(communityConfigs)` (range 1‑10). Guardrail only; the authoritative shape is the array itself. |
+| `numberOfCommunities` | int | `1` | Yes | Must equal `length(communityConfigs)` (range 1‑10). Typical = 1; increase only when distinct governance or lifecycle boundaries are required. Guardrail only; authoritative shape is the array itself. |
 | `deployEnclaves` | bool | `true` | No | Set `false` to deploy communities only (phased rollout / troubleshooting). |
 | `communityConfigs` | array | `[]` | Yes | Hierarchical configuration: each element declares a community plus nested enclaves & workloads. |
 | `enableGovernedServiceList` | bool | `false` | No | Emit governedServiceList into community properties (preview feature toggle). |
@@ -127,7 +127,7 @@ Deployment outputs include a summarized `rbacSummary` to aid in auditing without
 
 ```bicep
 param baseName = 'contoso'
-param numberOfCommunities = 1
+param numberOfCommunities = 1 // Typical deployments use a single community; bump only for deliberate separation.
 param enableGovernedServiceList = true
 param communityConfigs = [
   {

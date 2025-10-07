@@ -242,8 +242,7 @@ az deployment sub create \
   --location "East US 2" \
   --template-file solution.bicep \
   --parameters baseName="myenclave" \
-               numberOfCommunities=2 \
-               adminPassword="YourSecurePassword123!" \
+               numberOfCommunities=1 \
                @myNestedConfigOverrides.json
 ```
 
@@ -253,7 +252,7 @@ az deployment sub create \
 |-----------|------|---------|-------------|
 | `baseName` | string | - | Base name prefix for all resources |
 | `location` | string | deployment().location | Azure region for deployment |
-| `numberOfCommunities` | int | 2 | Must equal `length(communityConfigs)` (1–10) |
+| `numberOfCommunities` | int | 1 | Must equal `length(communityConfigs)` (1–10). Typical = 1; scale >1 only for isolated governance / lifecycle boundaries. |
 | `communityConfigs` | array | [] | Nested community → enclave → workload configuration objects |
 | `deployEnclaves` | bool | true | Skip enclaves/workloads when false (community-only phase) |
 | `enableGovernedServiceList` | bool | false | Emit governedServiceList (preview – optional) |

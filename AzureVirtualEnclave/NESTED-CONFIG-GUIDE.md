@@ -6,7 +6,7 @@ This guide explains the new **nested configuration structure** that allows indiv
 
 The template now supports **three levels of configuration**:
 
-```
+```text
 Community Level
 ├── Network addressing, DNS, maintenance, RBAC overrides
 ├── Enclave Level
@@ -256,28 +256,33 @@ If you have existing templates using the old simple configuration:
 ## Best Practices
 
 ### Network Planning
+
 - **Unique CIDR ranges**: Each enclave needs non-overlapping `customCidrRange`
 - **Size appropriately**: Use `/24` for small enclaves, `/23` for larger ones
 - **Plan hierarchy**: Community → Enclave → Subnet addressing
 
 ### Security Configuration  
+
 - **Bastion placement**: Enable only on enclaves needing admin access
 - **Network isolation**: Use `allowSubnetCommunication: false` for sensitive tiers
 - **Diagnostic routing**: Use `'Both'` for critical enclaves, `'EnclaveOnly'` for others
 
 ### Workload Organization
+
 - **Logical grouping**: Group related resources in same workload
 - **Resource group strategy**: Use separate RGs per service or environment
 - **Naming convention**: Use consistent naming like `'tier-service-instance'`
 
 ### Governance / RBAC
+
 - Use RBAC inheritance & explicit empty arrays to clear undesired roles
 - Maintenance objects require justification when `mode == 'On'`
 
 ## Validation Rules
 
 The template validates (soft guardrails / may evolve):
-- ✅ `communityConfigs` length should match `numberOfCommunities`
+
+- ✅ `communityConfigs` length must match `numberOfCommunities` (most deployments keep this at 1)
 - ✅ Justification present when maintenance mode enabled
 - ✅ Custom CIDR supplied only when `networkSize == 'custom'`
 - ✅ RBAC arrays use object IDs (no display names)
@@ -285,6 +290,7 @@ The template validates (soft guardrails / may evolve):
 ## Common Patterns
 
 ### Pattern 1: Environment Separation
+
 ```bicep
 // Dev community: permissive, single enclave
 // Staging community: moderate restrictions, single enclave  
@@ -292,6 +298,7 @@ The template validates (soft guardrails / may evolve):
 ```
 
 ### Pattern 2: Tier Separation
+
 ```bicep
 // Single community with multiple enclaves per tier
 // Web tier: public-facing, bastion enabled
@@ -300,6 +307,7 @@ The template validates (soft guardrails / may evolve):
 ```
 
 ### Pattern 3: Service Isolation
+
 ```bicep
 // Each microservice gets its own enclave
 // Shared services in separate enclaves
