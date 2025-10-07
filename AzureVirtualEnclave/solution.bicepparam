@@ -1,49 +1,49 @@
 using 'solution.bicep'
 
-// Simple Development Environment Configuration
-// ===========================================
-// This creates a minimal AVE setup for development and learning purposes
-// 1 Community -> 1 Enclave -> 2 Workloads
+// Minimal clean parameters file - test deployment
+// 1 community, 2 enclaves, 1 workload per enclave
 
-// Basic deployment parameters
-// Short baseName to satisfy dynamic length assertion (see solution.bicep)
-param baseName = 'ave1'
-param location = 'USGov Virginia'
+param baseName = 'contoso'
 
-// Simple scale: 1 community, 1 enclave, 2 workloads  
 param numberOfCommunities = 1
-param numberOfEnclavesPerCommunity = 1  // Kept for backward compatibility
-param numberOfWorkloadsPerEnclave = 2   // Kept for backward compatibility
 
-// Single Development Community Configuration
+// Enable governed service list defaults
+param enableGovernedServiceList = true
+
+// Optional: override default diagnostic destination ('Both' | 'CommunityOnly' | 'EnclaveOnly')
+// param diagnosticDestinationDefault = 'Both'
+
 param communityConfigs = [
   {
-    // Community Network Configuration
-    addressSpace: '10.0.0.0/16'        // Development network range
-    dnsServers: []                      // Use Azure default DNS
-    
-    // approvalSettings omitted (RP validation issue)
-    
-    // Single Development Enclave
+    addressSpace: '10.10.0.0/16'
+    dnsServers: []
     enclaveConfigs: [
       {
-        bastionEnabled: true                // Enable for admin access
-        networkName: 'dev-vnet'
-        networkSize: '/24'                  // Small network for dev (254 hosts)
-        customCidrRange: '10.0.0.0/24'     // Specific CIDR range
-        allowSubnetCommunication: true      // Allow communication between subnets
-        connectToAzureServices: true        // Allow Azure service connectivity
-        diagnosticDestination: 'EnclaveOnly'  // Basic diagnostics
-        
-        // Two Simple Workloads
+        bastionEnabled: true
+        networkName: 'enc0-vnet'
+        networkSize: '/24'
+        allowSubnetCommunication: true
+        connectToAzureServices: true
+        diagnosticDestination: 'Both'
+        maintenance: { mode: 'Off' }
         workloadConfigs: [
           {
-            name: 'dev-app'
-            resourceGroupCollection: ['rg-dev-app']
+            name: 'workload-a'
+            resourceGroupCollection: ['rg-contoso-a']
           }
+        ]
+      }
+      {
+        bastionEnabled: false
+        networkName: 'enc1-vnet'
+        networkSize: '/24'
+        allowSubnetCommunication: false
+        connectToAzureServices: true
+        diagnosticDestination: 'EnclaveOnly'
+        workloadConfigs: [
           {
-            name: 'dev-data'  
-            resourceGroupCollection: ['rg-dev-data']
+            name: 'workload-b'
+            resourceGroupCollection: ['rg-contoso-b']
           }
         ]
       }
@@ -51,10 +51,21 @@ param communityConfigs = [
   }
 ]
 
-// Resource tagging  
 param tags = {
-  Environment: 'Development'
-  Project: 'Simple-AVE-Dev'
+  Environment: 'Test'
+  Project: 'AVE-Test'
   DeployedBy: 'Bicep'
-  Owner: 'Developer'
+  Purpose: 'Schema-Validation'
 }
+
+// Updated with real user object ID (brsteeltest)
+param contributorPrincipals = ['abd8437b-107e-4c1b-9d65-6613f079ce61']
+param communityReaders = []
+param communityNetworkContributors = []
+param communityMonitoringReaders = []
+param communityMonitoringContributors = []
+param communityLogAnalyticsReaders = []
+param communityLogAnalyticsContributors = []
+param communitySecurityReaders = []
+param communitySecurityAdmins = []
+param communityUserAccessAdministrators = []

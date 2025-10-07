@@ -182,9 +182,9 @@ The `enclaveConfig` object controls network and security settings for virtual en
 ##### `diagnosticDestination`
 - **Type**: `string`
 - **Optional**: Yes
-- **Values**: `'CommunityOnly'` | `'EnclaveOnly'` | `'Both'`
-- **Description**: Controls where diagnostic information is sent
-- **Default**: Not specified (uses AVE defaults)
+- **Values**: `'EnclaveOnly'` | `'Both'`
+- **Description**: Controls where enclave diagnostic information is sent. If omitted or an invalid value is supplied, the module falls back to the module parameter `diagnosticDestinationDefault` (default `'Both'`).
+- **Default**: Not specified (module defaults to `'Both'`)
 
 ### Tags Configuration (`tags`)
 

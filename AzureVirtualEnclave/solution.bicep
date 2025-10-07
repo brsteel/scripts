@@ -57,15 +57,44 @@ param numberOfCommunities int = 2
 // Note: The following simple parameters are used for validation and loops
 // Actual enclave and workload configurations are defined within each community's config
 
-@description('DEPRECATED: Use enclaveConfigs array within each community instead. Kept for backward compatibility.')
-@minValue(1)
-@maxValue(5)
-param numberOfEnclavesPerCommunity int = 2
+// Removed deprecated scalar enclave/workload count parameters; counts now derived from nested configuration.
 
-@description('DEPRECATED: Use workloadConfigs array within each enclave instead. Kept for backward compatibility.')
-@minValue(1)
-@maxValue(10)
-param numberOfWorkloadsPerEnclave int = 3
+@description('Enable governedServiceList emission (uses built-in defaults when true).')
+param enableGovernedServiceList bool = false
+
+@description('Default diagnostic destination applied when an enclave does not specify one (CommunityOnly | EnclaveOnly | Both).')
+@allowed([
+  'CommunityOnly'
+  'EnclaveOnly'
+  'Both'
+])
+param diagnosticDestinationDefault string = 'Both'
+
+@description('Principal object IDs (users, groups, service principals) to assign Contributor at all scopes (community, enclave, workload). Empty = no automatic contributor assignments.')
+param contributorPrincipals array = []
+
+// Additional (optional) role bucket principal arrays; empty arrays mean no assignments
+@description('Community Reader group/object IDs')
+param communityReaders array = []
+@description('Community Network Contributor group/object IDs')
+param communityNetworkContributors array = []
+@description('Community Monitoring Reader group/object IDs')
+param communityMonitoringReaders array = []
+@description('Community Monitoring Contributor group/object IDs')
+param communityMonitoringContributors array = []
+@description('Community Log Analytics Reader group/object IDs')
+param communityLogAnalyticsReaders array = []
+@description('Community Log Analytics Contributor group/object IDs')
+param communityLogAnalyticsContributors array = []
+@description('Community Security Reader group/object IDs')
+param communitySecurityReaders array = []
+@description('Community Security Admin group/object IDs')
+param communitySecurityAdmins array = []
+@description('Community User Access Administrator group/object IDs')
+param communityUserAccessAdministrators array = []
+
+
+// Maintenance validation (simple guardrail) - if any community maintenance object sets mode On but missing justification, template could be extended to fail (future enhancement)
 
 @description('Array of community configurations with nested enclave and workload configurations.')
 param communityConfigs array = [
@@ -151,6 +180,18 @@ module communities 'modules/ave-community.bicep' = [for i in range(0, numberOfCo
     deployEnclaves: deployEnclaves
     communityConfig: communityConfigs[i]  // Pass entire community config with nested enclaves/workloads
     tags: union(tags, { CommunityIndex: string(i) })
+    communityContributors: contributorPrincipals
+    communityReaders: communityReaders
+    communityNetworkContributors: communityNetworkContributors
+    communityMonitoringReaders: communityMonitoringReaders
+    communityMonitoringContributors: communityMonitoringContributors
+    communityLogAnalyticsReaders: communityLogAnalyticsReaders
+    communityLogAnalyticsContributors: communityLogAnalyticsContributors
+    communitySecurityReaders: communitySecurityReaders
+    communitySecurityAdmins: communitySecurityAdmins
+    communityUserAccessAdministrators: communityUserAccessAdministrators
+    enableGovernedServiceList: enableGovernedServiceList
+    diagnosticDestinationDefault: diagnosticDestinationDefault
   }
 }]
 
@@ -162,14 +203,13 @@ output deployedCommunities array = [for i in range(0, numberOfCommunities): {
   location: canonicalLocation
   resourceId: communities[i].outputs.communityResourceId
 }]
+// Simplified totalResources output (derived enclave/workload counts omitted due to current Bicep aggregation limitations)
 output totalResources object = {
   communities: numberOfCommunities
-  // Nominal (configured) counts based on legacy scalar params
-  configuredEnclaves: numberOfCommunities * numberOfEnclavesPerCommunity
-  configuredWorkloads: numberOfCommunities * numberOfEnclavesPerCommunity * numberOfWorkloadsPerEnclave
-  // Actual deployed (may be 0 if deployEnclaves = false)
-  enclavesDeployed: deployEnclaves ? numberOfCommunities * numberOfEnclavesPerCommunity : 0
-  workloadsDeployed: deployEnclaves ? numberOfCommunities * numberOfEnclavesPerCommunity * numberOfWorkloadsPerEnclave : 0
+  deployEnclaves: deployEnclaves
 }
+
+// Hierarchical RBAC summary (array of community summaries)
+output rbacSummary array = [for i in range(0, numberOfCommunities): communities[i].outputs.rbacSummary]
 
 output effectiveLocation string = canonicalLocation
