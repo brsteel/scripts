@@ -5,17 +5,14 @@ This Bicep solution deploys **only the native Azure Virtual Enclave control-plan
 ## Architecture Overview
 
 ```text
-Subscription (deployment scope)
-└── Resource Group (container created by template)
-  └── Community (Microsoft.Mission/communities)
-    └── Virtual Enclaves (Microsoft.Mission/virtualEnclaves)
-      └── Workloads (Microsoft.Mission/virtualEnclaves/workloads)  <-- container objects only
+Community: <baseName>
+Enclave:   <baseName>e<enclaveIndex>
 ```
 
-## Features
+We intentionally removed the automatic numeric suffix for communities. If you need multiple communities in the same subscription, supply distinct `baseName` values per deployment (e.g. `alpha`, `bravo`). This keeps resource names stable and readable.
 
-- **Declarative Scaling**: Define any number of communities, each with an arbitrary array of enclaves, each with an arbitrary array of workload containers (no deprecated scalar count parameters).
-- **Isolation Model**: Logical segregation via native Mission RP constructs (no VNets are created by this template — the RP manages underlying hosted constructs internally).
+`baseName` max length is 28 – leaving room for enclave suffixes (`e0`, etc.) while staying within the 30‑character portal constraint. When planning many enclaves, you typically still remain well under the limit; adjust `baseName` downward only if you introduce longer custom enclave suffix logic in the future.
+
 - **Explicit Azure RBAC**: Standard `Microsoft.Authorization/roleAssignments` with clearable inheritance (empty array = clear) and a summarized `rbacSummary` output.
 - **Governance Hooks**: Optional governed service list emission (feature toggled) and maintenance mode object support (mode + principals + justification guardrail).
 - **Diagnostics Defaults**: Central `diagnosticDestinationDefault` applied unless overridden per enclave.

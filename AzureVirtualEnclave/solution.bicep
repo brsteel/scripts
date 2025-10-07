@@ -42,11 +42,10 @@ var canonicalLocation = toLower(replace(location, ' ', ''))
 var projectedCommunityHostedRgLength = length('${baseName}c0') + 30
 var projectedEnclaveHostedRgLength   = length('${baseName}c0e0') + 30
 // Portal hard limit: AVE community resource name must be <= 30 characters.
-// Given pattern '${baseName}c<i>' and baseName maxLength 24 (enforced above), worst case (i up to 9) length = baseNameLen + 2.
-// For enclave names ('${baseName}c<i>e<j>') worst case adds 4 chars total.
+// We now use baseName directly (no numeric suffix). If deploying multiple communities you must vary baseName values manually.
 var communityNameLengthLimit = 30
-var longestCommunityName = '${baseName}c${numberOfCommunities - 1}'
-var longestEnclaveName = '${baseName}c${numberOfCommunities - 1}e0'
+var longestCommunityName = baseName
+var longestEnclaveName = '${baseName}e0'
 var communityNameWithinLimit = length(longestCommunityName) <= communityNameLengthLimit
 var enclaveNameWithinLimit = length(longestEnclaveName) <= communityNameLengthLimit
 output hostedNameAnalysis object = {
@@ -186,11 +185,11 @@ resource mainResourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' = {
 
 // Deploy AVE Communities using native Microsoft.Mission resources
 module communities 'modules/ave-community.bicep' = [for i in range(0, numberOfCommunities): {
-  name: 'ave-community-${i}'
+  name: 'ave-community-${i}' // deployment name retains index for output clarity
   scope: mainResourceGroup
   params: {
     location: canonicalLocation
-  communityName: '${baseName}c${i}'
+  communityName: baseName // rely on distinct baseName values if >1 community is desired
   // useCompactNames removed; always compact
     deployEnclaves: deployEnclaves
     communityConfig: communityConfigs[i]  // Pass entire community config with nested enclaves/workloads
@@ -213,7 +212,7 @@ module communities 'modules/ave-community.bicep' = [for i in range(0, numberOfCo
 // Outputs
 output resourceGroupName string = mainResourceGroup.name
 output deployedCommunities array = [for i in range(0, numberOfCommunities): {
-  name: '${baseName}c${i}'
+  name: baseName
   resourceGroupName: mainResourceGroup.name
   location: canonicalLocation
   resourceId: communities[i].outputs.communityResourceId
