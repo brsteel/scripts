@@ -1,0 +1,1717 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.37.4.10188",
+      "templateHash": "8504752604070746095"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[deployment().location]",
+      "metadata": {
+        "description": "The Azure region where resources will be deployed"
+      }
+    },
+    "baseName": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 24,
+      "metadata": {
+        "description": "Base name for the deployment. MUST be short because the RP creates hosted RGs like <name>-HostedResources-<nonce>."
+      }
+    },
+    "deployEnclaves": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "When false, enclaves (and workloads) are skipped – deploy communities only (for phased troubleshooting)."
+      }
+    },
+    "numberOfCommunities": {
+      "type": "int",
+      "defaultValue": 2,
+      "minValue": 1,
+      "maxValue": 10,
+      "metadata": {
+        "description": "Number of Azure Virtual Enclave communities to deploy (1-10). Must match the length of communityConfigs array."
+      }
+    },
+    "enableGovernedServiceList": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Enable governedServiceList emission (uses built-in defaults when true)."
+      }
+    },
+    "diagnosticDestinationDefault": {
+      "type": "string",
+      "defaultValue": "Both",
+      "allowedValues": [
+        "CommunityOnly",
+        "EnclaveOnly",
+        "Both"
+      ],
+      "metadata": {
+        "description": "Default diagnostic destination applied when an enclave does not specify one (CommunityOnly | EnclaveOnly | Both)."
+      }
+    },
+    "contributorPrincipals": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "Principal object IDs (users, groups, service principals) to assign Contributor at all scopes (community, enclave, workload). Empty = no automatic contributor assignments."
+      }
+    },
+    "communityReaders": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "Community Reader group/object IDs"
+      }
+    },
+    "communityNetworkContributors": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "Community Network Contributor group/object IDs"
+      }
+    },
+    "communityMonitoringReaders": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "Community Monitoring Reader group/object IDs"
+      }
+    },
+    "communityMonitoringContributors": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "Community Monitoring Contributor group/object IDs"
+      }
+    },
+    "communityLogAnalyticsReaders": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "Community Log Analytics Reader group/object IDs"
+      }
+    },
+    "communityLogAnalyticsContributors": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "Community Log Analytics Contributor group/object IDs"
+      }
+    },
+    "communitySecurityReaders": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "Community Security Reader group/object IDs"
+      }
+    },
+    "communitySecurityAdmins": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "Community Security Admin group/object IDs"
+      }
+    },
+    "communityUserAccessAdministrators": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "Community User Access Administrator group/object IDs"
+      }
+    },
+    "communityConfigs": {
+      "type": "array",
+      "defaultValue": [
+        {
+          "addressSpace": "10.0.0.0/16",
+          "dnsServers": [],
+          "enclaveConfigs": [
+            {
+              "bastionEnabled": true,
+              "networkName": "web-tier-vnet",
+              "networkSize": "/24",
+              "customCidrRange": "10.0.0.0/24",
+              "allowSubnetCommunication": true,
+              "connectToAzureServices": true,
+              "diagnosticDestination": "EnclaveOnly",
+              "workloadConfigs": [
+                {
+                  "name": "web-server-1",
+                  "resourceGroupCollection": [
+                    "rg-web-primary"
+                  ]
+                },
+                {
+                  "name": "web-server-2",
+                  "resourceGroupCollection": [
+                    "rg-web-secondary"
+                  ]
+                }
+              ]
+            },
+            {
+              "bastionEnabled": false,
+              "networkName": "app-tier-vnet",
+              "networkSize": "/24",
+              "customCidrRange": "10.0.1.0/24",
+              "allowSubnetCommunication": false,
+              "connectToAzureServices": true,
+              "diagnosticDestination": "Both",
+              "workloadConfigs": [
+                {
+                  "name": "app-server-1",
+                  "resourceGroupCollection": [
+                    "rg-app-primary"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "description": "Array of community configurations with nested enclave and workload configurations."
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {
+        "Environment": "Virtual-Enclave",
+        "Project": "Azure-Virtual-Enclave",
+        "DeployedBy": "Bicep"
+      },
+      "metadata": {
+        "description": "Tags to apply to all resources"
+      }
+    }
+  },
+  "variables": {
+    "canonicalLocation": "[toLower(replace(parameters('location'), ' ', ''))]",
+    "projectedCommunityHostedRgLength": "[add(length(format('{0}c0', parameters('baseName'))), 30)]",
+    "projectedEnclaveHostedRgLength": "[add(length(format('{0}c0e0', parameters('baseName'))), 30)]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/resourceGroups",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}-rg', parameters('baseName'))]",
+      "location": "[variables('canonicalLocation')]",
+      "tags": "[parameters('tags')]"
+    },
+    {
+      "copy": {
+        "name": "communities",
+        "count": "[length(range(0, parameters('numberOfCommunities')))]"
+      },
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "[format('ave-community-{0}', range(0, parameters('numberOfCommunities'))[copyIndex()])]",
+      "resourceGroup": "[format('{0}-rg', parameters('baseName'))]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[variables('canonicalLocation')]"
+          },
+          "communityName": {
+            "value": "[format('{0}c{1}', parameters('baseName'), range(0, parameters('numberOfCommunities'))[copyIndex()])]"
+          },
+          "deployEnclaves": {
+            "value": "[parameters('deployEnclaves')]"
+          },
+          "communityConfig": {
+            "value": "[parameters('communityConfigs')[range(0, parameters('numberOfCommunities'))[copyIndex()]]]"
+          },
+          "tags": {
+            "value": "[union(parameters('tags'), createObject('CommunityIndex', string(range(0, parameters('numberOfCommunities'))[copyIndex()])))]"
+          },
+          "communityContributors": {
+            "value": "[parameters('contributorPrincipals')]"
+          },
+          "communityReaders": {
+            "value": "[parameters('communityReaders')]"
+          },
+          "communityNetworkContributors": {
+            "value": "[parameters('communityNetworkContributors')]"
+          },
+          "communityMonitoringReaders": {
+            "value": "[parameters('communityMonitoringReaders')]"
+          },
+          "communityMonitoringContributors": {
+            "value": "[parameters('communityMonitoringContributors')]"
+          },
+          "communityLogAnalyticsReaders": {
+            "value": "[parameters('communityLogAnalyticsReaders')]"
+          },
+          "communityLogAnalyticsContributors": {
+            "value": "[parameters('communityLogAnalyticsContributors')]"
+          },
+          "communitySecurityReaders": {
+            "value": "[parameters('communitySecurityReaders')]"
+          },
+          "communitySecurityAdmins": {
+            "value": "[parameters('communitySecurityAdmins')]"
+          },
+          "communityUserAccessAdministrators": {
+            "value": "[parameters('communityUserAccessAdministrators')]"
+          },
+          "enableGovernedServiceList": {
+            "value": "[parameters('enableGovernedServiceList')]"
+          },
+          "diagnosticDestinationDefault": {
+            "value": "[parameters('diagnosticDestinationDefault')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.37.4.10188",
+              "templateHash": "3944665504227558118"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "The Azure region where resources will be deployed"
+              }
+            },
+            "communityName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the AVE community"
+              }
+            },
+            "communityConfig": {
+              "type": "object",
+              "metadata": {
+                "description": "Community configuration with nested enclave and workload configurations"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "metadata": {
+                "description": "Tags to apply to all resources"
+              }
+            },
+            "communityContributors": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Object IDs for Community Contributors group (optional)"
+              }
+            },
+            "communityReaders": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Object IDs for Community Readers group (optional)"
+              }
+            },
+            "communityNetworkContributors": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Object IDs for Community Network Contributors group (optional)"
+              }
+            },
+            "communityMonitoringReaders": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Object IDs for Community Monitoring Readers group (optional)"
+              }
+            },
+            "communityMonitoringContributors": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Object IDs for Community Monitoring Contributors group (optional)"
+              }
+            },
+            "communityLogAnalyticsReaders": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Object IDs for Community Log Analytics Readers group (optional)"
+              }
+            },
+            "communityLogAnalyticsContributors": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Object IDs for Community Log Analytics Contributors group (optional)"
+              }
+            },
+            "communitySecurityReaders": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Object IDs for Community Security Readers group (optional)"
+              }
+            },
+            "communitySecurityAdmins": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Object IDs for Community Security Admins group (optional)"
+              }
+            },
+            "communityUserAccessAdministrators": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Object IDs for Community User Access Administrators group (optional)"
+              }
+            },
+            "enableGovernedServiceList": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Enable emission of the governedServiceList into the community properties"
+              }
+            },
+            "governedServiceListOverrides": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Override entries for governedServiceList (match on serviceId). Each object may include serviceId, option, policyAction, enforcement."
+              }
+            },
+            "diagnosticDestinationDefault": {
+              "type": "string",
+              "defaultValue": "Both",
+              "allowedValues": [
+                "CommunityOnly",
+                "EnclaveOnly",
+                "Both"
+              ],
+              "metadata": {
+                "description": "Default diagnostic destination propagated to enclaves if they omit diagnosticDestination (CommunityOnly | EnclaveOnly | Both)."
+              }
+            },
+            "deployEnclaves": {
+              "type": "bool",
+              "defaultValue": true,
+              "metadata": {
+                "description": "When false, enclaves (and workloads) are skipped for phased deployments"
+              }
+            }
+          },
+          "variables": {
+            "copy": [
+              {
+                "name": "maintenancePrincipals",
+                "count": "[length(coalesce(tryGet(tryGet(parameters('communityConfig'), 'maintenance'), 'principals'), createArray()))]",
+                "input": {
+                  "id": "[coalesce(tryGet(tryGet(parameters('communityConfig'), 'maintenance'), 'principals'), createArray())[copyIndex('maintenancePrincipals')]]",
+                  "type": "Group"
+                }
+              },
+              {
+                "name": "_enclaveEffective",
+                "count": "[length(variables('enclaveConfigs'))]",
+                "input": {
+                  "contributors": "[if(and(contains(variables('enclaveConfigs')[copyIndex('_enclaveEffective')], 'rbac'), contains(variables('enclaveConfigs')[copyIndex('_enclaveEffective')].rbac, 'contributors')), coalesce(variables('enclaveConfigs')[copyIndex('_enclaveEffective')].rbac.contributors, createArray()), parameters('communityContributors'))]",
+                  "readers": "[if(and(contains(variables('enclaveConfigs')[copyIndex('_enclaveEffective')], 'rbac'), contains(variables('enclaveConfigs')[copyIndex('_enclaveEffective')].rbac, 'readers')), coalesce(variables('enclaveConfigs')[copyIndex('_enclaveEffective')].rbac.readers, createArray()), parameters('communityReaders'))]",
+                  "networkContributors": "[if(and(contains(variables('enclaveConfigs')[copyIndex('_enclaveEffective')], 'rbac'), contains(variables('enclaveConfigs')[copyIndex('_enclaveEffective')].rbac, 'networkContributors')), coalesce(variables('enclaveConfigs')[copyIndex('_enclaveEffective')].rbac.networkContributors, createArray()), parameters('communityNetworkContributors'))]",
+                  "monitoringReaders": "[if(and(contains(variables('enclaveConfigs')[copyIndex('_enclaveEffective')], 'rbac'), contains(variables('enclaveConfigs')[copyIndex('_enclaveEffective')].rbac, 'monitoringReaders')), coalesce(variables('enclaveConfigs')[copyIndex('_enclaveEffective')].rbac.monitoringReaders, createArray()), parameters('communityMonitoringReaders'))]",
+                  "monitoringContributors": "[if(and(contains(variables('enclaveConfigs')[copyIndex('_enclaveEffective')], 'rbac'), contains(variables('enclaveConfigs')[copyIndex('_enclaveEffective')].rbac, 'monitoringContributors')), coalesce(variables('enclaveConfigs')[copyIndex('_enclaveEffective')].rbac.monitoringContributors, createArray()), parameters('communityMonitoringContributors'))]",
+                  "logReaders": "[if(and(contains(variables('enclaveConfigs')[copyIndex('_enclaveEffective')], 'rbac'), contains(variables('enclaveConfigs')[copyIndex('_enclaveEffective')].rbac, 'logReaders')), coalesce(variables('enclaveConfigs')[copyIndex('_enclaveEffective')].rbac.logReaders, createArray()), parameters('communityLogAnalyticsReaders'))]",
+                  "logContributors": "[if(and(contains(variables('enclaveConfigs')[copyIndex('_enclaveEffective')], 'rbac'), contains(variables('enclaveConfigs')[copyIndex('_enclaveEffective')].rbac, 'logContributors')), coalesce(variables('enclaveConfigs')[copyIndex('_enclaveEffective')].rbac.logContributors, createArray()), parameters('communityLogAnalyticsContributors'))]",
+                  "securityReaders": "[if(and(contains(variables('enclaveConfigs')[copyIndex('_enclaveEffective')], 'rbac'), contains(variables('enclaveConfigs')[copyIndex('_enclaveEffective')].rbac, 'securityReaders')), coalesce(variables('enclaveConfigs')[copyIndex('_enclaveEffective')].rbac.securityReaders, createArray()), parameters('communitySecurityReaders'))]",
+                  "securityAdmins": "[if(and(contains(variables('enclaveConfigs')[copyIndex('_enclaveEffective')], 'rbac'), contains(variables('enclaveConfigs')[copyIndex('_enclaveEffective')].rbac, 'securityAdmins')), coalesce(variables('enclaveConfigs')[copyIndex('_enclaveEffective')].rbac.securityAdmins, createArray()), parameters('communitySecurityAdmins'))]",
+                  "userAccessAdministrators": "[if(and(contains(variables('enclaveConfigs')[copyIndex('_enclaveEffective')], 'rbac'), contains(variables('enclaveConfigs')[copyIndex('_enclaveEffective')].rbac, 'userAccessAdministrators')), coalesce(variables('enclaveConfigs')[copyIndex('_enclaveEffective')].rbac.userAccessAdministrators, createArray()), parameters('communityUserAccessAdministrators'))]"
+                }
+              },
+              {
+                "name": "_enclaveSummaries",
+                "count": "[length(variables('enclaveConfigs'))]",
+                "input": {
+                  "name": "[format('{0}e{1}', parameters('communityName'), copyIndex('_enclaveSummaries'))]",
+                  "effective": "[variables('_enclaveEffective')[copyIndex('_enclaveSummaries')]]"
+                }
+              }
+            ],
+            "defaultGovernedServiceList": [
+              {
+                "serviceId": "AKS",
+                "option": "Allow",
+                "policyAction": "Enforce",
+                "enforcement": "Enabled"
+              },
+              {
+                "serviceId": "AppService",
+                "option": "Allow",
+                "policyAction": "Enforce",
+                "enforcement": "Enabled"
+              },
+              {
+                "serviceId": "ContainerRegistry",
+                "option": "Allow",
+                "policyAction": "Enforce",
+                "enforcement": "Enabled"
+              },
+              {
+                "serviceId": "CosmosDB",
+                "option": "Allow",
+                "policyAction": "Enforce",
+                "enforcement": "Enabled"
+              },
+              {
+                "serviceId": "KeyVault",
+                "option": "Allow",
+                "policyAction": "Enforce",
+                "enforcement": "Enabled"
+              },
+              {
+                "serviceId": "MicrosoftSQL",
+                "option": "Allow",
+                "policyAction": "Enforce",
+                "enforcement": "Enabled"
+              },
+              {
+                "serviceId": "Monitoring",
+                "option": "NotApplicable",
+                "policyAction": "Enforce",
+                "enforcement": "Enabled"
+              },
+              {
+                "serviceId": "PostgreSQL",
+                "option": "Allow",
+                "policyAction": "Enforce",
+                "enforcement": "Enabled"
+              },
+              {
+                "serviceId": "ServiceBus",
+                "option": "Allow",
+                "policyAction": "Enforce",
+                "enforcement": "Enabled"
+              },
+              {
+                "serviceId": "Storage",
+                "option": "Allow",
+                "policyAction": "Enforce",
+                "enforcement": "Enabled"
+              },
+              {
+                "serviceId": "AzureFirewalls",
+                "option": "Allow",
+                "policyAction": "Enforce",
+                "enforcement": "Enabled"
+              },
+              {
+                "serviceId": "Insights",
+                "option": "Allow",
+                "policyAction": "Enforce",
+                "enforcement": "Enabled"
+              },
+              {
+                "serviceId": "Logic",
+                "option": "Allow",
+                "policyAction": "Enforce",
+                "enforcement": "Enabled"
+              },
+              {
+                "serviceId": "PrivateDNSZones",
+                "option": "Allow",
+                "policyAction": "Enforce",
+                "enforcement": "Enabled"
+              },
+              {
+                "serviceId": "DataConnectors",
+                "option": "Allow",
+                "policyAction": "Enforce",
+                "enforcement": "Enabled"
+              }
+            ],
+            "effectiveGovernedServiceList": "[if(greater(length(parameters('governedServiceListOverrides')), 0), parameters('governedServiceListOverrides'), variables('defaultGovernedServiceList'))]",
+            "governedServiceListFragment": "[if(parameters('enableGovernedServiceList'), createObject('governedServiceList', variables('effectiveGovernedServiceList')), createObject())]",
+            "communityMaintenanceMode": "[union(createObject('mode', if(empty(tryGet(tryGet(parameters('communityConfig'), 'maintenance'), 'mode')), 'Off', parameters('communityConfig').maintenance.mode), 'principals', if(and(greater(length(variables('maintenancePrincipals')), 0), not(equals(tryGet(tryGet(parameters('communityConfig'), 'maintenance'), 'mode'), 'Off'))), variables('maintenancePrincipals'), createArray())), if(and(equals(tryGet(tryGet(parameters('communityConfig'), 'maintenance'), 'mode'), 'On'), not(empty(tryGet(tryGet(parameters('communityConfig'), 'maintenance'), 'justification')))), createObject('justification', parameters('communityConfig').maintenance.justification), createObject()))]",
+            "roleMap": {
+              "Contributor": "b24988ac-6180-42a0-ab88-20f7382dd24c",
+              "Reader": "acdd72a7-3385-48ef-bd42-f606fba81ae7",
+              "NetworkContributor": "4d97b98b-1d4f-4787-a291-c67834d212e7",
+              "MonitoringReader": "43d0d8ad-25c7-4714-9337-8ba259a9fe05",
+              "MonitoringContributor": "749f88d5-cbae-40b8-bcfc-e573ddc772fa",
+              "LogAnalyticsReader": "73c42c96-874c-492b-b04d-ab87d138a893",
+              "LogAnalyticsContributor": "92aaf0da-9dab-42b6-94a3-d43ce8d16293",
+              "SecurityReader": "8d32ff11-19e7-4f25-8d7a-4176c81c0f83",
+              "SecurityAdmin": "fb1c8493-542b-48eb-b624-b4c8fea62acd",
+              "UserAccessAdministrator": "18d7d88d-d35e-4fb5-a5c3-7773a3e3d1af"
+            },
+            "enclaveConfigs": "[parameters('communityConfig').enclaveConfigs]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Mission/communities",
+              "apiVersion": "2025-05-01-preview",
+              "name": "[parameters('communityName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "identity": {
+                "type": "None"
+              },
+              "properties": "[union(createObject('addressSpace', parameters('communityConfig').addressSpace, 'dnsServers', parameters('communityConfig').dnsServers, 'maintenanceModeConfiguration', variables('communityMaintenanceMode')), variables('governedServiceListFragment'))]"
+            },
+            {
+              "copy": {
+                "name": "communityContributorAssignments",
+                "count": "[length(parameters('communityContributors'))]"
+              },
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.Mission/communities/{0}', parameters('communityName'))]",
+              "name": "[guid(resourceId('Microsoft.Mission/communities', parameters('communityName')), variables('roleMap').Contributor, parameters('communityContributors')[copyIndex()])]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleMap').Contributor)]",
+                "principalId": "[parameters('communityContributors')[copyIndex()]]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Mission/communities', parameters('communityName'))]"
+              ]
+            },
+            {
+              "copy": {
+                "name": "communityReaderAssignments",
+                "count": "[length(parameters('communityReaders'))]"
+              },
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.Mission/communities/{0}', parameters('communityName'))]",
+              "name": "[guid(resourceId('Microsoft.Mission/communities', parameters('communityName')), variables('roleMap').Reader, parameters('communityReaders')[copyIndex()])]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleMap').Reader)]",
+                "principalId": "[parameters('communityReaders')[copyIndex()]]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Mission/communities', parameters('communityName'))]"
+              ]
+            },
+            {
+              "copy": {
+                "name": "communityNetworkContributorAssignments",
+                "count": "[length(parameters('communityNetworkContributors'))]"
+              },
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.Mission/communities/{0}', parameters('communityName'))]",
+              "name": "[guid(resourceId('Microsoft.Mission/communities', parameters('communityName')), variables('roleMap').NetworkContributor, parameters('communityNetworkContributors')[copyIndex()])]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleMap').NetworkContributor)]",
+                "principalId": "[parameters('communityNetworkContributors')[copyIndex()]]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Mission/communities', parameters('communityName'))]"
+              ]
+            },
+            {
+              "copy": {
+                "name": "communityMonitoringReaderAssignments",
+                "count": "[length(parameters('communityMonitoringReaders'))]"
+              },
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.Mission/communities/{0}', parameters('communityName'))]",
+              "name": "[guid(resourceId('Microsoft.Mission/communities', parameters('communityName')), variables('roleMap').MonitoringReader, parameters('communityMonitoringReaders')[copyIndex()])]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleMap').MonitoringReader)]",
+                "principalId": "[parameters('communityMonitoringReaders')[copyIndex()]]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Mission/communities', parameters('communityName'))]"
+              ]
+            },
+            {
+              "copy": {
+                "name": "communityMonitoringContributorAssignments",
+                "count": "[length(parameters('communityMonitoringContributors'))]"
+              },
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.Mission/communities/{0}', parameters('communityName'))]",
+              "name": "[guid(resourceId('Microsoft.Mission/communities', parameters('communityName')), variables('roleMap').MonitoringContributor, parameters('communityMonitoringContributors')[copyIndex()])]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleMap').MonitoringContributor)]",
+                "principalId": "[parameters('communityMonitoringContributors')[copyIndex()]]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Mission/communities', parameters('communityName'))]"
+              ]
+            },
+            {
+              "copy": {
+                "name": "communityLogReaderAssignments",
+                "count": "[length(parameters('communityLogAnalyticsReaders'))]"
+              },
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.Mission/communities/{0}', parameters('communityName'))]",
+              "name": "[guid(resourceId('Microsoft.Mission/communities', parameters('communityName')), variables('roleMap').LogAnalyticsReader, parameters('communityLogAnalyticsReaders')[copyIndex()])]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleMap').LogAnalyticsReader)]",
+                "principalId": "[parameters('communityLogAnalyticsReaders')[copyIndex()]]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Mission/communities', parameters('communityName'))]"
+              ]
+            },
+            {
+              "copy": {
+                "name": "communityLogContributorAssignments",
+                "count": "[length(parameters('communityLogAnalyticsContributors'))]"
+              },
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.Mission/communities/{0}', parameters('communityName'))]",
+              "name": "[guid(resourceId('Microsoft.Mission/communities', parameters('communityName')), variables('roleMap').LogAnalyticsContributor, parameters('communityLogAnalyticsContributors')[copyIndex()])]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleMap').LogAnalyticsContributor)]",
+                "principalId": "[parameters('communityLogAnalyticsContributors')[copyIndex()]]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Mission/communities', parameters('communityName'))]"
+              ]
+            },
+            {
+              "copy": {
+                "name": "communitySecurityReaderAssignments",
+                "count": "[length(parameters('communitySecurityReaders'))]"
+              },
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.Mission/communities/{0}', parameters('communityName'))]",
+              "name": "[guid(resourceId('Microsoft.Mission/communities', parameters('communityName')), variables('roleMap').SecurityReader, parameters('communitySecurityReaders')[copyIndex()])]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleMap').SecurityReader)]",
+                "principalId": "[parameters('communitySecurityReaders')[copyIndex()]]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Mission/communities', parameters('communityName'))]"
+              ]
+            },
+            {
+              "copy": {
+                "name": "communitySecurityAdminAssignments",
+                "count": "[length(parameters('communitySecurityAdmins'))]"
+              },
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.Mission/communities/{0}', parameters('communityName'))]",
+              "name": "[guid(resourceId('Microsoft.Mission/communities', parameters('communityName')), variables('roleMap').SecurityAdmin, parameters('communitySecurityAdmins')[copyIndex()])]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleMap').SecurityAdmin)]",
+                "principalId": "[parameters('communitySecurityAdmins')[copyIndex()]]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Mission/communities', parameters('communityName'))]"
+              ]
+            },
+            {
+              "copy": {
+                "name": "communityUserAccessAdminAssignments",
+                "count": "[length(parameters('communityUserAccessAdministrators'))]"
+              },
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.Mission/communities/{0}', parameters('communityName'))]",
+              "name": "[guid(resourceId('Microsoft.Mission/communities', parameters('communityName')), variables('roleMap').UserAccessAdministrator, parameters('communityUserAccessAdministrators')[copyIndex()])]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('roleMap').UserAccessAdministrator)]",
+                "principalId": "[parameters('communityUserAccessAdministrators')[copyIndex()]]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Mission/communities', parameters('communityName'))]"
+              ]
+            },
+            {
+              "copy": {
+                "name": "virtualEnclaves",
+                "count": "[length(if(parameters('deployEnclaves'), parameters('communityConfig').enclaveConfigs, createArray()))]"
+              },
+              "type": "Microsoft.Resources/deployments",
+              "apiVersion": "2022-09-01",
+              "name": "[format('ave-enclave-{0}', copyIndex())]",
+              "properties": {
+                "expressionEvaluationOptions": {
+                  "scope": "inner"
+                },
+                "mode": "Incremental",
+                "parameters": {
+                  "location": {
+                    "value": "[parameters('location')]"
+                  },
+                  "enclaveName": {
+                    "value": "[format('{0}e{1}', parameters('communityName'), copyIndex())]"
+                  },
+                  "communityResourceId": {
+                    "value": "[resourceId('Microsoft.Mission/communities', parameters('communityName'))]"
+                  },
+                  "enclaveConfig": {
+                    "value": "[if(parameters('deployEnclaves'), parameters('communityConfig').enclaveConfigs, createArray())[copyIndex()]]"
+                  },
+                  "tags": {
+                    "value": "[union(parameters('tags'), createObject('EnclaveIndex', string(copyIndex())))]"
+                  },
+                  "enclaveContributors": {
+                    "value": "[variables('_enclaveEffective')[copyIndex()].contributors]"
+                  },
+                  "enclaveReaders": {
+                    "value": "[variables('_enclaveEffective')[copyIndex()].readers]"
+                  },
+                  "enclaveNetworkContributors": {
+                    "value": "[variables('_enclaveEffective')[copyIndex()].networkContributors]"
+                  },
+                  "enclaveMonitoringReaders": {
+                    "value": "[variables('_enclaveEffective')[copyIndex()].monitoringReaders]"
+                  },
+                  "enclaveMonitoringContributors": {
+                    "value": "[variables('_enclaveEffective')[copyIndex()].monitoringContributors]"
+                  },
+                  "enclaveLogAnalyticsReaders": {
+                    "value": "[variables('_enclaveEffective')[copyIndex()].logReaders]"
+                  },
+                  "enclaveLogAnalyticsContributors": {
+                    "value": "[variables('_enclaveEffective')[copyIndex()].logContributors]"
+                  },
+                  "enclaveSecurityReaders": {
+                    "value": "[variables('_enclaveEffective')[copyIndex()].securityReaders]"
+                  },
+                  "enclaveSecurityAdmins": {
+                    "value": "[variables('_enclaveEffective')[copyIndex()].securityAdmins]"
+                  },
+                  "enclaveUserAccessAdministrators": {
+                    "value": "[variables('_enclaveEffective')[copyIndex()].userAccessAdministrators]"
+                  },
+                  "diagnosticDestinationDefault": {
+                    "value": "[parameters('diagnosticDestinationDefault')]"
+                  }
+                },
+                "template": {
+                  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                  "contentVersion": "1.0.0.0",
+                  "metadata": {
+                    "_generator": {
+                      "name": "bicep",
+                      "version": "0.37.4.10188",
+                      "templateHash": "13828612266354523976"
+                    }
+                  },
+                  "parameters": {
+                    "location": {
+                      "type": "string",
+                      "metadata": {
+                        "description": "The Azure region where resources will be deployed"
+                      }
+                    },
+                    "enclaveName": {
+                      "type": "string",
+                      "metadata": {
+                        "description": "Name of the virtual enclave"
+                      }
+                    },
+                    "communityResourceId": {
+                      "type": "string",
+                      "metadata": {
+                        "description": "Community resource ID that this enclave belongs to"
+                      }
+                    },
+                    "enclaveConfig": {
+                      "type": "object",
+                      "metadata": {
+                        "description": "Enclave configuration with nested workload configurations"
+                      }
+                    },
+                    "tags": {
+                      "type": "object",
+                      "metadata": {
+                        "description": "Tags to apply to all resources"
+                      }
+                    },
+                    "diagnosticDestinationDefault": {
+                      "type": "string",
+                      "defaultValue": "Both",
+                      "allowedValues": [
+                        "CommunityOnly",
+                        "EnclaveOnly",
+                        "Both"
+                      ],
+                      "metadata": {
+                        "description": "Default diagnostic destination when enclaveConfig.diagnosticDestination is not provided. Per-enclave override must be one of the allowed values."
+                      }
+                    },
+                    "enclaveContributors": {
+                      "type": "array",
+                      "defaultValue": [],
+                      "metadata": {
+                        "description": "Object IDs for Enclave Contributors group (optional)"
+                      }
+                    },
+                    "enclaveReaders": {
+                      "type": "array",
+                      "defaultValue": [],
+                      "metadata": {
+                        "description": "Object IDs for Enclave Readers group (optional)"
+                      }
+                    },
+                    "enclaveNetworkContributors": {
+                      "type": "array",
+                      "defaultValue": [],
+                      "metadata": {
+                        "description": "Object IDs for Enclave Network Contributors group (optional)"
+                      }
+                    },
+                    "enclaveMonitoringReaders": {
+                      "type": "array",
+                      "defaultValue": [],
+                      "metadata": {
+                        "description": "Object IDs for Enclave Monitoring Readers group (optional)"
+                      }
+                    },
+                    "enclaveMonitoringContributors": {
+                      "type": "array",
+                      "defaultValue": [],
+                      "metadata": {
+                        "description": "Object IDs for Enclave Monitoring Contributors group (optional)"
+                      }
+                    },
+                    "enclaveLogAnalyticsReaders": {
+                      "type": "array",
+                      "defaultValue": [],
+                      "metadata": {
+                        "description": "Object IDs for Enclave Log Analytics Readers group (optional)"
+                      }
+                    },
+                    "enclaveLogAnalyticsContributors": {
+                      "type": "array",
+                      "defaultValue": [],
+                      "metadata": {
+                        "description": "Object IDs for Enclave Log Analytics Contributors group (optional)"
+                      }
+                    },
+                    "enclaveSecurityReaders": {
+                      "type": "array",
+                      "defaultValue": [],
+                      "metadata": {
+                        "description": "Object IDs for Enclave Security Readers group (optional)"
+                      }
+                    },
+                    "enclaveSecurityAdmins": {
+                      "type": "array",
+                      "defaultValue": [],
+                      "metadata": {
+                        "description": "Object IDs for Enclave Security Admins group (optional)"
+                      }
+                    },
+                    "enclaveUserAccessAdministrators": {
+                      "type": "array",
+                      "defaultValue": [],
+                      "metadata": {
+                        "description": "Object IDs for Enclave User Access Administrators group (optional)"
+                      }
+                    }
+                  },
+                  "variables": {
+                    "copy": [
+                      {
+                        "name": "maintenancePrincipals",
+                        "count": "[length(coalesce(tryGet(tryGet(parameters('enclaveConfig'), 'maintenance'), 'principals'), createArray()))]",
+                        "input": {
+                          "id": "[coalesce(tryGet(tryGet(parameters('enclaveConfig'), 'maintenance'), 'principals'), createArray())[copyIndex('maintenancePrincipals')]]",
+                          "type": "Group"
+                        }
+                      }
+                    ],
+                    "_normalizedNetworkSize": "[toLower(if(empty(tryGet(parameters('enclaveConfig'), 'networkSize')), '', parameters('enclaveConfig').networkSize))]",
+                    "_isCustom": "[equals(variables('_normalizedNetworkSize'), 'custom')]",
+                    "_needsCustomButMissing": "[and(variables('_isCustom'), empty(tryGet(parameters('enclaveConfig'), 'customCidrRange')))]",
+                    "_hasRangeButNotCustom": "[and(not(variables('_isCustom')), not(empty(tryGet(parameters('enclaveConfig'), 'customCidrRange'))))]",
+                    "_maintenanceOnMissingJustification": "[and(equals(toLower(coalesce(tryGet(tryGet(parameters('enclaveConfig'), 'maintenance'), 'mode'), 'off')), 'on'), empty(tryGet(tryGet(parameters('enclaveConfig'), 'maintenance'), 'justification')))]",
+                    "_validationFailed": "[or(or(variables('_needsCustomButMissing'), variables('_hasRangeButNotCustom')), variables('_maintenanceOnMissingJustification'))]",
+                    "_validationParts": "[concat(if(variables('_needsCustomButMissing'), createArray('customCidrRange required when networkSize==custom'), createArray()), if(variables('_hasRangeButNotCustom'), createArray('customCidrRange must be omitted unless networkSize==custom'), createArray()), if(variables('_maintenanceOnMissingJustification'), createArray('maintenance.justification required when maintenance.mode==On'), createArray()))]",
+                    "_validationMessage": "[if(variables('_validationFailed'), format('Enclave configuration validation failed: {0}', join(variables('_validationParts'), ' | ')), '')]",
+                    "enclaveMaintenanceMode": "[union(createObject('mode', if(empty(tryGet(tryGet(parameters('enclaveConfig'), 'maintenance'), 'mode')), 'Off', parameters('enclaveConfig').maintenance.mode), 'principals', if(and(greater(length(variables('maintenancePrincipals')), 0), not(equals(tryGet(tryGet(parameters('enclaveConfig'), 'maintenance'), 'mode'), 'Off'))), variables('maintenancePrincipals'), createArray())), if(and(equals(tryGet(tryGet(parameters('enclaveConfig'), 'maintenance'), 'mode'), 'On'), not(empty(tryGet(tryGet(parameters('enclaveConfig'), 'maintenance'), 'justification')))), createObject('justification', parameters('enclaveConfig').maintenance.justification), createObject()))]",
+                    "contributorRoleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b24988ac-6180-42a0-ab88-20f7382dd24c')]",
+                    "readerRoleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'acdd72a7-3385-48ef-bd42-f606fba81ae7')]",
+                    "networkContributorRoleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4d97b98b-1d4f-4787-a291-c67834d212e7')]",
+                    "monitoringReaderRoleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '43d0d8ad-25c7-4714-9337-8ba259a9fe05')]",
+                    "monitoringContributorRoleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '749f88d5-cbae-40b8-bcfc-e573ddc772fa')]",
+                    "logReaderRoleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '73c42c96-874c-492b-b04d-ab87d138a893')]",
+                    "logContributorRoleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '92aaf0da-9dab-42b6-94a3-d43ce8d16293')]",
+                    "securityReaderRoleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '8d32ff11-19e7-4f25-8d7a-4176c81c0f83')]",
+                    "securityAdminRoleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'fb1c8493-542b-48eb-b624-b4c8fea62acd')]",
+                    "userAccessAdminRoleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '18d7d88d-d35e-4fb5-a5c3-7773a3e3d1af')]"
+                  },
+                  "resources": [
+                    {
+                      "type": "Microsoft.Mission/virtualEnclaves",
+                      "apiVersion": "2025-05-01-preview",
+                      "name": "[parameters('enclaveName')]",
+                      "location": "[parameters('location')]",
+                      "tags": "[parameters('tags')]",
+                      "identity": {
+                        "type": "None"
+                      },
+                      "properties": "[union(createObject('communityResourceId', parameters('communityResourceId'), 'bastionEnabled', parameters('enclaveConfig').bastionEnabled, 'enclaveVirtualNetwork', shallowMerge(createArray(createObject('networkName', parameters('enclaveConfig').networkName, 'networkSize', if(not(empty(tryGet(parameters('enclaveConfig'), 'networkSize'))), if(equals(toLower(parameters('enclaveConfig').networkSize), 'custom'), 'custom', replace(parameters('enclaveConfig').networkSize, '/', '')), '24'), 'allowSubnetCommunication', bool(tryGet(parameters('enclaveConfig'), 'allowSubnetCommunication'))), if(and(equals(toLower(tryGet(parameters('enclaveConfig'), 'networkSize')), 'custom'), not(empty(tryGet(parameters('enclaveConfig'), 'customCidrRange')))), createObject('customCidrRange', parameters('enclaveConfig').customCidrRange), createObject()), createObject('subnetConfigurations', createArray(createObject('subnetName', 'workload-subnet', 'networkPrefixSize', 26), createObject('subnetName', 'management-subnet', 'networkPrefixSize', 28))))), 'enclaveDefaultSettings', createObject('diagnosticDestination', if(contains(createArray('CommunityOnly', 'EnclaveOnly', 'Both'), tryGet(parameters('enclaveConfig'), 'diagnosticDestination')), parameters('enclaveConfig').diagnosticDestination, parameters('diagnosticDestinationDefault'))), 'maintenanceModeConfiguration', variables('enclaveMaintenanceMode')), if(variables('_validationFailed'), createObject('validationError', variables('_validationMessage')), createObject()))]"
+                    },
+                    {
+                      "copy": {
+                        "name": "enclaveContributorAssignments",
+                        "count": "[length(parameters('enclaveContributors'))]"
+                      },
+                      "type": "Microsoft.Authorization/roleAssignments",
+                      "apiVersion": "2022-04-01",
+                      "scope": "[format('Microsoft.Mission/virtualEnclaves/{0}', parameters('enclaveName'))]",
+                      "name": "[guid(resourceId('Microsoft.Mission/virtualEnclaves', parameters('enclaveName')), variables('contributorRoleDefinitionId'), parameters('enclaveContributors')[copyIndex()])]",
+                      "properties": {
+                        "roleDefinitionId": "[variables('contributorRoleDefinitionId')]",
+                        "principalId": "[parameters('enclaveContributors')[copyIndex()]]"
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Mission/virtualEnclaves', parameters('enclaveName'))]"
+                      ]
+                    },
+                    {
+                      "copy": {
+                        "name": "enclaveReaderAssignments",
+                        "count": "[length(parameters('enclaveReaders'))]"
+                      },
+                      "type": "Microsoft.Authorization/roleAssignments",
+                      "apiVersion": "2022-04-01",
+                      "scope": "[format('Microsoft.Mission/virtualEnclaves/{0}', parameters('enclaveName'))]",
+                      "name": "[guid(resourceId('Microsoft.Mission/virtualEnclaves', parameters('enclaveName')), variables('readerRoleDefinitionId'), parameters('enclaveReaders')[copyIndex()])]",
+                      "properties": {
+                        "roleDefinitionId": "[variables('readerRoleDefinitionId')]",
+                        "principalId": "[parameters('enclaveReaders')[copyIndex()]]"
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Mission/virtualEnclaves', parameters('enclaveName'))]"
+                      ]
+                    },
+                    {
+                      "copy": {
+                        "name": "enclaveNetworkContributorAssignments",
+                        "count": "[length(parameters('enclaveNetworkContributors'))]"
+                      },
+                      "type": "Microsoft.Authorization/roleAssignments",
+                      "apiVersion": "2022-04-01",
+                      "scope": "[format('Microsoft.Mission/virtualEnclaves/{0}', parameters('enclaveName'))]",
+                      "name": "[guid(resourceId('Microsoft.Mission/virtualEnclaves', parameters('enclaveName')), variables('networkContributorRoleDefinitionId'), parameters('enclaveNetworkContributors')[copyIndex()])]",
+                      "properties": {
+                        "roleDefinitionId": "[variables('networkContributorRoleDefinitionId')]",
+                        "principalId": "[parameters('enclaveNetworkContributors')[copyIndex()]]"
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Mission/virtualEnclaves', parameters('enclaveName'))]"
+                      ]
+                    },
+                    {
+                      "copy": {
+                        "name": "enclaveMonitoringReaderAssignments",
+                        "count": "[length(parameters('enclaveMonitoringReaders'))]"
+                      },
+                      "type": "Microsoft.Authorization/roleAssignments",
+                      "apiVersion": "2022-04-01",
+                      "scope": "[format('Microsoft.Mission/virtualEnclaves/{0}', parameters('enclaveName'))]",
+                      "name": "[guid(resourceId('Microsoft.Mission/virtualEnclaves', parameters('enclaveName')), variables('monitoringReaderRoleDefinitionId'), parameters('enclaveMonitoringReaders')[copyIndex()])]",
+                      "properties": {
+                        "roleDefinitionId": "[variables('monitoringReaderRoleDefinitionId')]",
+                        "principalId": "[parameters('enclaveMonitoringReaders')[copyIndex()]]"
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Mission/virtualEnclaves', parameters('enclaveName'))]"
+                      ]
+                    },
+                    {
+                      "copy": {
+                        "name": "enclaveMonitoringContributorAssignments",
+                        "count": "[length(parameters('enclaveMonitoringContributors'))]"
+                      },
+                      "type": "Microsoft.Authorization/roleAssignments",
+                      "apiVersion": "2022-04-01",
+                      "scope": "[format('Microsoft.Mission/virtualEnclaves/{0}', parameters('enclaveName'))]",
+                      "name": "[guid(resourceId('Microsoft.Mission/virtualEnclaves', parameters('enclaveName')), variables('monitoringContributorRoleDefinitionId'), parameters('enclaveMonitoringContributors')[copyIndex()])]",
+                      "properties": {
+                        "roleDefinitionId": "[variables('monitoringContributorRoleDefinitionId')]",
+                        "principalId": "[parameters('enclaveMonitoringContributors')[copyIndex()]]"
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Mission/virtualEnclaves', parameters('enclaveName'))]"
+                      ]
+                    },
+                    {
+                      "copy": {
+                        "name": "enclaveLogReaderAssignments",
+                        "count": "[length(parameters('enclaveLogAnalyticsReaders'))]"
+                      },
+                      "type": "Microsoft.Authorization/roleAssignments",
+                      "apiVersion": "2022-04-01",
+                      "scope": "[format('Microsoft.Mission/virtualEnclaves/{0}', parameters('enclaveName'))]",
+                      "name": "[guid(resourceId('Microsoft.Mission/virtualEnclaves', parameters('enclaveName')), variables('logReaderRoleDefinitionId'), parameters('enclaveLogAnalyticsReaders')[copyIndex()])]",
+                      "properties": {
+                        "roleDefinitionId": "[variables('logReaderRoleDefinitionId')]",
+                        "principalId": "[parameters('enclaveLogAnalyticsReaders')[copyIndex()]]"
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Mission/virtualEnclaves', parameters('enclaveName'))]"
+                      ]
+                    },
+                    {
+                      "copy": {
+                        "name": "enclaveLogContributorAssignments",
+                        "count": "[length(parameters('enclaveLogAnalyticsContributors'))]"
+                      },
+                      "type": "Microsoft.Authorization/roleAssignments",
+                      "apiVersion": "2022-04-01",
+                      "scope": "[format('Microsoft.Mission/virtualEnclaves/{0}', parameters('enclaveName'))]",
+                      "name": "[guid(resourceId('Microsoft.Mission/virtualEnclaves', parameters('enclaveName')), variables('logContributorRoleDefinitionId'), parameters('enclaveLogAnalyticsContributors')[copyIndex()])]",
+                      "properties": {
+                        "roleDefinitionId": "[variables('logContributorRoleDefinitionId')]",
+                        "principalId": "[parameters('enclaveLogAnalyticsContributors')[copyIndex()]]"
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Mission/virtualEnclaves', parameters('enclaveName'))]"
+                      ]
+                    },
+                    {
+                      "copy": {
+                        "name": "enclaveSecurityReaderAssignments",
+                        "count": "[length(parameters('enclaveSecurityReaders'))]"
+                      },
+                      "type": "Microsoft.Authorization/roleAssignments",
+                      "apiVersion": "2022-04-01",
+                      "scope": "[format('Microsoft.Mission/virtualEnclaves/{0}', parameters('enclaveName'))]",
+                      "name": "[guid(resourceId('Microsoft.Mission/virtualEnclaves', parameters('enclaveName')), variables('securityReaderRoleDefinitionId'), parameters('enclaveSecurityReaders')[copyIndex()])]",
+                      "properties": {
+                        "roleDefinitionId": "[variables('securityReaderRoleDefinitionId')]",
+                        "principalId": "[parameters('enclaveSecurityReaders')[copyIndex()]]"
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Mission/virtualEnclaves', parameters('enclaveName'))]"
+                      ]
+                    },
+                    {
+                      "copy": {
+                        "name": "enclaveSecurityAdminAssignments",
+                        "count": "[length(parameters('enclaveSecurityAdmins'))]"
+                      },
+                      "type": "Microsoft.Authorization/roleAssignments",
+                      "apiVersion": "2022-04-01",
+                      "scope": "[format('Microsoft.Mission/virtualEnclaves/{0}', parameters('enclaveName'))]",
+                      "name": "[guid(resourceId('Microsoft.Mission/virtualEnclaves', parameters('enclaveName')), variables('securityAdminRoleDefinitionId'), parameters('enclaveSecurityAdmins')[copyIndex()])]",
+                      "properties": {
+                        "roleDefinitionId": "[variables('securityAdminRoleDefinitionId')]",
+                        "principalId": "[parameters('enclaveSecurityAdmins')[copyIndex()]]"
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Mission/virtualEnclaves', parameters('enclaveName'))]"
+                      ]
+                    },
+                    {
+                      "copy": {
+                        "name": "enclaveUserAccessAdminAssignments",
+                        "count": "[length(parameters('enclaveUserAccessAdministrators'))]"
+                      },
+                      "type": "Microsoft.Authorization/roleAssignments",
+                      "apiVersion": "2022-04-01",
+                      "scope": "[format('Microsoft.Mission/virtualEnclaves/{0}', parameters('enclaveName'))]",
+                      "name": "[guid(resourceId('Microsoft.Mission/virtualEnclaves', parameters('enclaveName')), variables('userAccessAdminRoleDefinitionId'), parameters('enclaveUserAccessAdministrators')[copyIndex()])]",
+                      "properties": {
+                        "roleDefinitionId": "[variables('userAccessAdminRoleDefinitionId')]",
+                        "principalId": "[parameters('enclaveUserAccessAdministrators')[copyIndex()]]"
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Mission/virtualEnclaves', parameters('enclaveName'))]"
+                      ]
+                    },
+                    {
+                      "copy": {
+                        "name": "workloads",
+                        "count": "[length(parameters('enclaveConfig').workloadConfigs)]"
+                      },
+                      "type": "Microsoft.Resources/deployments",
+                      "apiVersion": "2022-09-01",
+                      "name": "[format('ave-{0}-workload-{1}', parameters('enclaveName'), copyIndex())]",
+                      "properties": {
+                        "expressionEvaluationOptions": {
+                          "scope": "inner"
+                        },
+                        "mode": "Incremental",
+                        "parameters": {
+                          "location": {
+                            "value": "[parameters('location')]"
+                          },
+                          "workloadName": {
+                            "value": "[coalesce(tryGet(parameters('enclaveConfig').workloadConfigs[copyIndex()], 'name'), format('{0}-workload-{1}', parameters('enclaveName'), copyIndex()))]"
+                          },
+                          "parentEnclaveName": {
+                            "value": "[parameters('enclaveName')]"
+                          },
+                          "workloadConfig": {
+                            "value": "[parameters('enclaveConfig').workloadConfigs[copyIndex()]]"
+                          },
+                          "tags": {
+                            "value": "[union(parameters('tags'), createObject('WorkloadIndex', string(copyIndex())))]"
+                          },
+                          "workloadContributors": {
+                            "value": "[parameters('enclaveContributors')]"
+                          },
+                          "workloadReaders": {
+                            "value": "[parameters('enclaveReaders')]"
+                          },
+                          "workloadNetworkContributors": {
+                            "value": "[parameters('enclaveNetworkContributors')]"
+                          },
+                          "workloadMonitoringReaders": {
+                            "value": "[parameters('enclaveMonitoringReaders')]"
+                          },
+                          "workloadMonitoringContributors": {
+                            "value": "[parameters('enclaveMonitoringContributors')]"
+                          },
+                          "workloadLogAnalyticsReaders": {
+                            "value": "[parameters('enclaveLogAnalyticsReaders')]"
+                          },
+                          "workloadLogAnalyticsContributors": {
+                            "value": "[parameters('enclaveLogAnalyticsContributors')]"
+                          },
+                          "workloadSecurityReaders": {
+                            "value": "[parameters('enclaveSecurityReaders')]"
+                          },
+                          "workloadSecurityAdmins": {
+                            "value": "[parameters('enclaveSecurityAdmins')]"
+                          },
+                          "workloadUserAccessAdministrators": {
+                            "value": "[parameters('enclaveUserAccessAdministrators')]"
+                          }
+                        },
+                        "template": {
+                          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                          "contentVersion": "1.0.0.0",
+                          "metadata": {
+                            "_generator": {
+                              "name": "bicep",
+                              "version": "0.37.4.10188",
+                              "templateHash": "15125117229637639620"
+                            }
+                          },
+                          "parameters": {
+                            "location": {
+                              "type": "string",
+                              "metadata": {
+                                "description": "The Azure region where resources will be deployed"
+                              }
+                            },
+                            "workloadName": {
+                              "type": "string",
+                              "metadata": {
+                                "description": "Name of the workload"
+                              }
+                            },
+                            "parentEnclaveName": {
+                              "type": "string",
+                              "metadata": {
+                                "description": "Parent Virtual Enclave name"
+                              }
+                            },
+                            "tags": {
+                              "type": "object",
+                              "metadata": {
+                                "description": "Tags to apply to all resources"
+                              }
+                            },
+                            "workloadConfig": {
+                              "type": "object",
+                              "metadata": {
+                                "description": "Workload configuration settings"
+                              }
+                            },
+                            "workloadContributors": {
+                              "type": "array",
+                              "defaultValue": [],
+                              "metadata": {
+                                "description": "Effective workload Contributors (fallback if workloadConfig.rbac.contributors empty)"
+                              }
+                            },
+                            "workloadReaders": {
+                              "type": "array",
+                              "defaultValue": [],
+                              "metadata": {
+                                "description": "Effective workload Readers"
+                              }
+                            },
+                            "workloadNetworkContributors": {
+                              "type": "array",
+                              "defaultValue": [],
+                              "metadata": {
+                                "description": "Effective workload Network Contributors"
+                              }
+                            },
+                            "workloadMonitoringReaders": {
+                              "type": "array",
+                              "defaultValue": [],
+                              "metadata": {
+                                "description": "Effective workload Monitoring Readers"
+                              }
+                            },
+                            "workloadMonitoringContributors": {
+                              "type": "array",
+                              "defaultValue": [],
+                              "metadata": {
+                                "description": "Effective workload Monitoring Contributors"
+                              }
+                            },
+                            "workloadLogAnalyticsReaders": {
+                              "type": "array",
+                              "defaultValue": [],
+                              "metadata": {
+                                "description": "Effective workload Log Analytics Readers"
+                              }
+                            },
+                            "workloadLogAnalyticsContributors": {
+                              "type": "array",
+                              "defaultValue": [],
+                              "metadata": {
+                                "description": "Effective workload Log Analytics Contributors"
+                              }
+                            },
+                            "workloadSecurityReaders": {
+                              "type": "array",
+                              "defaultValue": [],
+                              "metadata": {
+                                "description": "Effective workload Security Readers"
+                              }
+                            },
+                            "workloadSecurityAdmins": {
+                              "type": "array",
+                              "defaultValue": [],
+                              "metadata": {
+                                "description": "Effective workload Security Admins"
+                              }
+                            },
+                            "workloadUserAccessAdministrators": {
+                              "type": "array",
+                              "defaultValue": [],
+                              "metadata": {
+                                "description": "Effective workload User Access Administrators"
+                              }
+                            }
+                          },
+                          "variables": {
+                            "copy": [
+                              {
+                                "name": "workloadResourceGroupIds",
+                                "count": "[length(coalesce(tryGet(parameters('workloadConfig'), 'resourceGroupCollection'), createArray()))]",
+                                "input": "[if(or(startsWith(coalesce(tryGet(parameters('workloadConfig'), 'resourceGroupCollection'), createArray())[copyIndex('workloadResourceGroupIds')], '/subscriptions/'), startsWith(coalesce(tryGet(parameters('workloadConfig'), 'resourceGroupCollection'), createArray())[copyIndex('workloadResourceGroupIds')], '/providers/')), coalesce(tryGet(parameters('workloadConfig'), 'resourceGroupCollection'), createArray())[copyIndex('workloadResourceGroupIds')], format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, coalesce(tryGet(parameters('workloadConfig'), 'resourceGroupCollection'), createArray())[copyIndex('workloadResourceGroupIds')]))]"
+                              }
+                            ],
+                            "effContributors": "[if(and(contains(parameters('workloadConfig'), 'rbac'), contains(parameters('workloadConfig').rbac, 'contributors')), coalesce(parameters('workloadConfig').rbac.contributors, createArray()), parameters('workloadContributors'))]",
+                            "effReaders": "[if(and(contains(parameters('workloadConfig'), 'rbac'), contains(parameters('workloadConfig').rbac, 'readers')), coalesce(parameters('workloadConfig').rbac.readers, createArray()), parameters('workloadReaders'))]",
+                            "effNetworkContributors": "[if(and(contains(parameters('workloadConfig'), 'rbac'), contains(parameters('workloadConfig').rbac, 'networkContributors')), coalesce(parameters('workloadConfig').rbac.networkContributors, createArray()), parameters('workloadNetworkContributors'))]",
+                            "effMonitoringReaders": "[if(and(contains(parameters('workloadConfig'), 'rbac'), contains(parameters('workloadConfig').rbac, 'monitoringReaders')), coalesce(parameters('workloadConfig').rbac.monitoringReaders, createArray()), parameters('workloadMonitoringReaders'))]",
+                            "effMonitoringContributors": "[if(and(contains(parameters('workloadConfig'), 'rbac'), contains(parameters('workloadConfig').rbac, 'monitoringContributors')), coalesce(parameters('workloadConfig').rbac.monitoringContributors, createArray()), parameters('workloadMonitoringContributors'))]",
+                            "effLogReaders": "[if(and(contains(parameters('workloadConfig'), 'rbac'), contains(parameters('workloadConfig').rbac, 'logReaders')), coalesce(parameters('workloadConfig').rbac.logReaders, createArray()), parameters('workloadLogAnalyticsReaders'))]",
+                            "effLogContributors": "[if(and(contains(parameters('workloadConfig'), 'rbac'), contains(parameters('workloadConfig').rbac, 'logContributors')), coalesce(parameters('workloadConfig').rbac.logContributors, createArray()), parameters('workloadLogAnalyticsContributors'))]",
+                            "effSecurityReaders": "[if(and(contains(parameters('workloadConfig'), 'rbac'), contains(parameters('workloadConfig').rbac, 'securityReaders')), coalesce(parameters('workloadConfig').rbac.securityReaders, createArray()), parameters('workloadSecurityReaders'))]",
+                            "effSecurityAdmins": "[if(and(contains(parameters('workloadConfig'), 'rbac'), contains(parameters('workloadConfig').rbac, 'securityAdmins')), coalesce(parameters('workloadConfig').rbac.securityAdmins, createArray()), parameters('workloadSecurityAdmins'))]",
+                            "effUserAccessAdmins": "[if(and(contains(parameters('workloadConfig'), 'rbac'), contains(parameters('workloadConfig').rbac, 'userAccessAdministrators')), coalesce(parameters('workloadConfig').rbac.userAccessAdministrators, createArray()), parameters('workloadUserAccessAdministrators'))]",
+                            "rdContributor": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b24988ac-6180-42a0-ab88-20f7382dd24c')]",
+                            "rdReader": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'acdd72a7-3385-48ef-bd42-f606fba81ae7')]",
+                            "rdNetworkContributor": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4d97b98b-1d4f-4787-a291-c67834d212e7')]",
+                            "rdMonitoringReader": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '43d0d8ad-25c7-4714-9337-8ba259a9fe05')]",
+                            "rdMonitoringContributor": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '749f88d5-cbae-40b8-bcfc-e573ddc772fa')]",
+                            "rdLogReader": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '73c42c96-874c-492b-b04d-ab87d138a893')]",
+                            "rdLogContributor": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '92aaf0da-9dab-42b6-94a3-d43ce8d16293')]",
+                            "rdSecurityReader": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '8d32ff11-19e7-4f25-8d7a-4176c81c0f83')]",
+                            "rdSecurityAdmin": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'fb1c8493-542b-48eb-b624-b4c8fea62acd')]",
+                            "rdUserAccessAdmin": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '18d7d88d-d35e-4fb5-a5c3-7773a3e3d1af')]"
+                          },
+                          "resources": [
+                            {
+                              "type": "Microsoft.Mission/virtualEnclaves/workloads",
+                              "apiVersion": "2025-05-01-preview",
+                              "name": "[format('{0}/{1}', parameters('parentEnclaveName'), parameters('workloadName'))]",
+                              "location": "[parameters('location')]",
+                              "tags": "[parameters('tags')]",
+                              "properties": {
+                                "resourceGroupCollection": "[variables('workloadResourceGroupIds')]"
+                              }
+                            },
+                            {
+                              "copy": {
+                                "name": "workloadContributorAssignments",
+                                "count": "[length(variables('effContributors'))]"
+                              },
+                              "type": "Microsoft.Authorization/roleAssignments",
+                              "apiVersion": "2022-04-01",
+                              "scope": "[format('Microsoft.Mission/virtualEnclaves/{0}/workloads/{1}', parameters('parentEnclaveName'), parameters('workloadName'))]",
+                              "name": "[guid(resourceId('Microsoft.Mission/virtualEnclaves/workloads', parameters('parentEnclaveName'), parameters('workloadName')), variables('rdContributor'), variables('effContributors')[copyIndex()])]",
+                              "properties": {
+                                "roleDefinitionId": "[variables('rdContributor')]",
+                                "principalId": "[variables('effContributors')[copyIndex()]]"
+                              },
+                              "dependsOn": [
+                                "[resourceId('Microsoft.Mission/virtualEnclaves/workloads', parameters('parentEnclaveName'), parameters('workloadName'))]"
+                              ]
+                            },
+                            {
+                              "copy": {
+                                "name": "workloadReaderAssignments",
+                                "count": "[length(variables('effReaders'))]"
+                              },
+                              "type": "Microsoft.Authorization/roleAssignments",
+                              "apiVersion": "2022-04-01",
+                              "scope": "[format('Microsoft.Mission/virtualEnclaves/{0}/workloads/{1}', parameters('parentEnclaveName'), parameters('workloadName'))]",
+                              "name": "[guid(resourceId('Microsoft.Mission/virtualEnclaves/workloads', parameters('parentEnclaveName'), parameters('workloadName')), variables('rdReader'), variables('effReaders')[copyIndex()])]",
+                              "properties": {
+                                "roleDefinitionId": "[variables('rdReader')]",
+                                "principalId": "[variables('effReaders')[copyIndex()]]"
+                              },
+                              "dependsOn": [
+                                "[resourceId('Microsoft.Mission/virtualEnclaves/workloads', parameters('parentEnclaveName'), parameters('workloadName'))]"
+                              ]
+                            },
+                            {
+                              "copy": {
+                                "name": "workloadNetworkContributorAssignments",
+                                "count": "[length(variables('effNetworkContributors'))]"
+                              },
+                              "type": "Microsoft.Authorization/roleAssignments",
+                              "apiVersion": "2022-04-01",
+                              "scope": "[format('Microsoft.Mission/virtualEnclaves/{0}/workloads/{1}', parameters('parentEnclaveName'), parameters('workloadName'))]",
+                              "name": "[guid(resourceId('Microsoft.Mission/virtualEnclaves/workloads', parameters('parentEnclaveName'), parameters('workloadName')), variables('rdNetworkContributor'), variables('effNetworkContributors')[copyIndex()])]",
+                              "properties": {
+                                "roleDefinitionId": "[variables('rdNetworkContributor')]",
+                                "principalId": "[variables('effNetworkContributors')[copyIndex()]]"
+                              },
+                              "dependsOn": [
+                                "[resourceId('Microsoft.Mission/virtualEnclaves/workloads', parameters('parentEnclaveName'), parameters('workloadName'))]"
+                              ]
+                            },
+                            {
+                              "copy": {
+                                "name": "workloadMonitoringReaderAssignments",
+                                "count": "[length(variables('effMonitoringReaders'))]"
+                              },
+                              "type": "Microsoft.Authorization/roleAssignments",
+                              "apiVersion": "2022-04-01",
+                              "scope": "[format('Microsoft.Mission/virtualEnclaves/{0}/workloads/{1}', parameters('parentEnclaveName'), parameters('workloadName'))]",
+                              "name": "[guid(resourceId('Microsoft.Mission/virtualEnclaves/workloads', parameters('parentEnclaveName'), parameters('workloadName')), variables('rdMonitoringReader'), variables('effMonitoringReaders')[copyIndex()])]",
+                              "properties": {
+                                "roleDefinitionId": "[variables('rdMonitoringReader')]",
+                                "principalId": "[variables('effMonitoringReaders')[copyIndex()]]"
+                              },
+                              "dependsOn": [
+                                "[resourceId('Microsoft.Mission/virtualEnclaves/workloads', parameters('parentEnclaveName'), parameters('workloadName'))]"
+                              ]
+                            },
+                            {
+                              "copy": {
+                                "name": "workloadMonitoringContributorAssignments",
+                                "count": "[length(variables('effMonitoringContributors'))]"
+                              },
+                              "type": "Microsoft.Authorization/roleAssignments",
+                              "apiVersion": "2022-04-01",
+                              "scope": "[format('Microsoft.Mission/virtualEnclaves/{0}/workloads/{1}', parameters('parentEnclaveName'), parameters('workloadName'))]",
+                              "name": "[guid(resourceId('Microsoft.Mission/virtualEnclaves/workloads', parameters('parentEnclaveName'), parameters('workloadName')), variables('rdMonitoringContributor'), variables('effMonitoringContributors')[copyIndex()])]",
+                              "properties": {
+                                "roleDefinitionId": "[variables('rdMonitoringContributor')]",
+                                "principalId": "[variables('effMonitoringContributors')[copyIndex()]]"
+                              },
+                              "dependsOn": [
+                                "[resourceId('Microsoft.Mission/virtualEnclaves/workloads', parameters('parentEnclaveName'), parameters('workloadName'))]"
+                              ]
+                            },
+                            {
+                              "copy": {
+                                "name": "workloadLogReaderAssignments",
+                                "count": "[length(variables('effLogReaders'))]"
+                              },
+                              "type": "Microsoft.Authorization/roleAssignments",
+                              "apiVersion": "2022-04-01",
+                              "scope": "[format('Microsoft.Mission/virtualEnclaves/{0}/workloads/{1}', parameters('parentEnclaveName'), parameters('workloadName'))]",
+                              "name": "[guid(resourceId('Microsoft.Mission/virtualEnclaves/workloads', parameters('parentEnclaveName'), parameters('workloadName')), variables('rdLogReader'), variables('effLogReaders')[copyIndex()])]",
+                              "properties": {
+                                "roleDefinitionId": "[variables('rdLogReader')]",
+                                "principalId": "[variables('effLogReaders')[copyIndex()]]"
+                              },
+                              "dependsOn": [
+                                "[resourceId('Microsoft.Mission/virtualEnclaves/workloads', parameters('parentEnclaveName'), parameters('workloadName'))]"
+                              ]
+                            },
+                            {
+                              "copy": {
+                                "name": "workloadLogContributorAssignments",
+                                "count": "[length(variables('effLogContributors'))]"
+                              },
+                              "type": "Microsoft.Authorization/roleAssignments",
+                              "apiVersion": "2022-04-01",
+                              "scope": "[format('Microsoft.Mission/virtualEnclaves/{0}/workloads/{1}', parameters('parentEnclaveName'), parameters('workloadName'))]",
+                              "name": "[guid(resourceId('Microsoft.Mission/virtualEnclaves/workloads', parameters('parentEnclaveName'), parameters('workloadName')), variables('rdLogContributor'), variables('effLogContributors')[copyIndex()])]",
+                              "properties": {
+                                "roleDefinitionId": "[variables('rdLogContributor')]",
+                                "principalId": "[variables('effLogContributors')[copyIndex()]]"
+                              },
+                              "dependsOn": [
+                                "[resourceId('Microsoft.Mission/virtualEnclaves/workloads', parameters('parentEnclaveName'), parameters('workloadName'))]"
+                              ]
+                            },
+                            {
+                              "copy": {
+                                "name": "workloadSecurityReaderAssignments",
+                                "count": "[length(variables('effSecurityReaders'))]"
+                              },
+                              "type": "Microsoft.Authorization/roleAssignments",
+                              "apiVersion": "2022-04-01",
+                              "scope": "[format('Microsoft.Mission/virtualEnclaves/{0}/workloads/{1}', parameters('parentEnclaveName'), parameters('workloadName'))]",
+                              "name": "[guid(resourceId('Microsoft.Mission/virtualEnclaves/workloads', parameters('parentEnclaveName'), parameters('workloadName')), variables('rdSecurityReader'), variables('effSecurityReaders')[copyIndex()])]",
+                              "properties": {
+                                "roleDefinitionId": "[variables('rdSecurityReader')]",
+                                "principalId": "[variables('effSecurityReaders')[copyIndex()]]"
+                              },
+                              "dependsOn": [
+                                "[resourceId('Microsoft.Mission/virtualEnclaves/workloads', parameters('parentEnclaveName'), parameters('workloadName'))]"
+                              ]
+                            },
+                            {
+                              "copy": {
+                                "name": "workloadSecurityAdminAssignments",
+                                "count": "[length(variables('effSecurityAdmins'))]"
+                              },
+                              "type": "Microsoft.Authorization/roleAssignments",
+                              "apiVersion": "2022-04-01",
+                              "scope": "[format('Microsoft.Mission/virtualEnclaves/{0}/workloads/{1}', parameters('parentEnclaveName'), parameters('workloadName'))]",
+                              "name": "[guid(resourceId('Microsoft.Mission/virtualEnclaves/workloads', parameters('parentEnclaveName'), parameters('workloadName')), variables('rdSecurityAdmin'), variables('effSecurityAdmins')[copyIndex()])]",
+                              "properties": {
+                                "roleDefinitionId": "[variables('rdSecurityAdmin')]",
+                                "principalId": "[variables('effSecurityAdmins')[copyIndex()]]"
+                              },
+                              "dependsOn": [
+                                "[resourceId('Microsoft.Mission/virtualEnclaves/workloads', parameters('parentEnclaveName'), parameters('workloadName'))]"
+                              ]
+                            },
+                            {
+                              "copy": {
+                                "name": "workloadUserAccessAdminAssignments",
+                                "count": "[length(variables('effUserAccessAdmins'))]"
+                              },
+                              "type": "Microsoft.Authorization/roleAssignments",
+                              "apiVersion": "2022-04-01",
+                              "scope": "[format('Microsoft.Mission/virtualEnclaves/{0}/workloads/{1}', parameters('parentEnclaveName'), parameters('workloadName'))]",
+                              "name": "[guid(resourceId('Microsoft.Mission/virtualEnclaves/workloads', parameters('parentEnclaveName'), parameters('workloadName')), variables('rdUserAccessAdmin'), variables('effUserAccessAdmins')[copyIndex()])]",
+                              "properties": {
+                                "roleDefinitionId": "[variables('rdUserAccessAdmin')]",
+                                "principalId": "[variables('effUserAccessAdmins')[copyIndex()]]"
+                              },
+                              "dependsOn": [
+                                "[resourceId('Microsoft.Mission/virtualEnclaves/workloads', parameters('parentEnclaveName'), parameters('workloadName'))]"
+                              ]
+                            }
+                          ],
+                          "outputs": {
+                            "workloadName": {
+                              "type": "string",
+                              "value": "[parameters('workloadName')]"
+                            },
+                            "workloadResourceId": {
+                              "type": "string",
+                              "value": "[resourceId('Microsoft.Mission/virtualEnclaves/workloads', parameters('parentEnclaveName'), parameters('workloadName'))]"
+                            },
+                            "provisioningState": {
+                              "type": "string",
+                              "value": "[reference(resourceId('Microsoft.Mission/virtualEnclaves/workloads', parameters('parentEnclaveName'), parameters('workloadName')), '2025-05-01-preview').provisioningState]"
+                            },
+                            "resourceGroupCollection": {
+                              "type": "array",
+                              "value": "[reference(resourceId('Microsoft.Mission/virtualEnclaves/workloads', parameters('parentEnclaveName'), parameters('workloadName')), '2025-05-01-preview').resourceGroupCollection]"
+                            },
+                            "workloadRbacEffective": {
+                              "type": "object",
+                              "value": {
+                                "contributors": "[variables('effContributors')]",
+                                "readers": "[variables('effReaders')]",
+                                "networkContributors": "[variables('effNetworkContributors')]",
+                                "monitoringReaders": "[variables('effMonitoringReaders')]",
+                                "monitoringContributors": "[variables('effMonitoringContributors')]",
+                                "logReaders": "[variables('effLogReaders')]",
+                                "logContributors": "[variables('effLogContributors')]",
+                                "securityReaders": "[variables('effSecurityReaders')]",
+                                "securityAdmins": "[variables('effSecurityAdmins')]",
+                                "userAccessAdministrators": "[variables('effUserAccessAdmins')]"
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "dependsOn": [
+                        "[resourceId('Microsoft.Mission/virtualEnclaves', parameters('enclaveName'))]"
+                      ]
+                    }
+                  ],
+                  "outputs": {
+                    "enclaveName": {
+                      "type": "string",
+                      "value": "[parameters('enclaveName')]"
+                    },
+                    "enclaveResourceId": {
+                      "type": "string",
+                      "value": "[resourceId('Microsoft.Mission/virtualEnclaves', parameters('enclaveName'))]"
+                    },
+                    "managedResourceGroupName": {
+                      "type": "string",
+                      "value": "[reference(resourceId('Microsoft.Mission/virtualEnclaves', parameters('enclaveName')), '2025-05-01-preview').managedResourceGroupName]"
+                    },
+                    "deployedWorkloads": {
+                      "type": "array",
+                      "copy": {
+                        "count": "[length(parameters('enclaveConfig').workloadConfigs)]",
+                        "input": {
+                          "name": "[coalesce(tryGet(parameters('enclaveConfig').workloadConfigs[copyIndex()], 'name'), format('{0}-workload-{1}', parameters('enclaveName'), copyIndex()))]",
+                          "resourceId": "[reference(resourceId('Microsoft.Resources/deployments', format('ave-{0}-workload-{1}', parameters('enclaveName'), copyIndex())), '2022-09-01').outputs.workloadResourceId.value]"
+                        }
+                      }
+                    },
+                    "workloadRbacSummary": {
+                      "type": "array",
+                      "copy": {
+                        "count": "[length(parameters('enclaveConfig').workloadConfigs)]",
+                        "input": {
+                          "name": "[coalesce(tryGet(parameters('enclaveConfig').workloadConfigs[copyIndex()], 'name'), format('{0}-workload-{1}', parameters('enclaveName'), copyIndex()))]",
+                          "effective": "[reference(resourceId('Microsoft.Resources/deployments', format('ave-{0}-workload-{1}', parameters('enclaveName'), copyIndex())), '2022-09-01').outputs.workloadRbacEffective.value]"
+                        }
+                      }
+                    },
+                    "enclaveMaintenance": {
+                      "type": "object",
+                      "value": {
+                        "mode": "[if(empty(tryGet(tryGet(parameters('enclaveConfig'), 'maintenance'), 'mode')), 'Off', parameters('enclaveConfig').maintenance.mode)]",
+                        "principals": "[if(greater(length(coalesce(tryGet(tryGet(parameters('enclaveConfig'), 'maintenance'), 'principals'), createArray())), 0), parameters('enclaveConfig').maintenance.principals, createArray())]",
+                        "justification": "[if(equals(tryGet(tryGet(parameters('enclaveConfig'), 'maintenance'), 'mode'), 'On'), coalesce(tryGet(tryGet(parameters('enclaveConfig'), 'maintenance'), 'justification'), ''), '')]"
+                      }
+                    }
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Mission/communities', parameters('communityName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "communityName": {
+              "type": "string",
+              "value": "[parameters('communityName')]"
+            },
+            "communityResourceId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Mission/communities', parameters('communityName'))]"
+            },
+            "managedResourceGroupName": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Mission/communities', parameters('communityName')), '2025-05-01-preview').managedResourceGroupName]"
+            },
+            "deployedEnclaves": {
+              "type": "array",
+              "copy": {
+                "count": "[length(if(parameters('deployEnclaves'), parameters('communityConfig').enclaveConfigs, createArray()))]",
+                "input": {
+                  "name": "[format('{0}e{1}', parameters('communityName'), copyIndex())]",
+                  "resourceId": "[if(parameters('deployEnclaves'), reference(resourceId('Microsoft.Resources/deployments', format('ave-enclave-{0}', copyIndex())), '2022-09-01').outputs.enclaveResourceId.value, '')]"
+                }
+              }
+            },
+            "communityMaintenance": {
+              "type": "object",
+              "value": {
+                "mode": "[if(empty(tryGet(tryGet(parameters('communityConfig'), 'maintenance'), 'mode')), 'Off', parameters('communityConfig').maintenance.mode)]",
+                "principals": "[if(greater(length(coalesce(tryGet(tryGet(parameters('communityConfig'), 'maintenance'), 'principals'), createArray())), 0), parameters('communityConfig').maintenance.principals, createArray())]",
+                "justification": "[if(equals(tryGet(tryGet(parameters('communityConfig'), 'maintenance'), 'mode'), 'On'), coalesce(tryGet(tryGet(parameters('communityConfig'), 'maintenance'), 'justification'), ''), '')]"
+              }
+            },
+            "rbacSummary": {
+              "type": "object",
+              "value": {
+                "community": {
+                  "name": "[parameters('communityName')]",
+                  "contributors": "[parameters('communityContributors')]",
+                  "readers": "[parameters('communityReaders')]",
+                  "networkContributors": "[parameters('communityNetworkContributors')]",
+                  "monitoringReaders": "[parameters('communityMonitoringReaders')]",
+                  "monitoringContributors": "[parameters('communityMonitoringContributors')]",
+                  "logReaders": "[parameters('communityLogAnalyticsReaders')]",
+                  "logContributors": "[parameters('communityLogAnalyticsContributors')]",
+                  "securityReaders": "[parameters('communitySecurityReaders')]",
+                  "securityAdmins": "[parameters('communitySecurityAdmins')]",
+                  "userAccessAdministrators": "[parameters('communityUserAccessAdministrators')]"
+                },
+                "enclaves": "[variables('_enclaveSummaries')]"
+              }
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[subscriptionResourceId('Microsoft.Resources/resourceGroups', format('{0}-rg', parameters('baseName')))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "hostedNameAnalysis": {
+      "type": "object",
+      "value": {
+        "baseName": "[parameters('baseName')]",
+        "projectedCommunityHostedRgLength": "[variables('projectedCommunityHostedRgLength')]",
+        "projectedEnclaveHostedRgLength": "[variables('projectedEnclaveHostedRgLength')]"
+      }
+    },
+    "resourceGroupName": {
+      "type": "string",
+      "value": "[format('{0}-rg', parameters('baseName'))]"
+    },
+    "deployedCommunities": {
+      "type": "array",
+      "copy": {
+        "count": "[length(range(0, parameters('numberOfCommunities')))]",
+        "input": {
+          "name": "[format('{0}c{1}', parameters('baseName'), range(0, parameters('numberOfCommunities'))[copyIndex()])]",
+          "resourceGroupName": "[format('{0}-rg', parameters('baseName'))]",
+          "location": "[variables('canonicalLocation')]",
+          "resourceId": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('{0}-rg', parameters('baseName'))), 'Microsoft.Resources/deployments', format('ave-community-{0}', range(0, parameters('numberOfCommunities'))[range(0, parameters('numberOfCommunities'))[copyIndex()]])), '2022-09-01').outputs.communityResourceId.value]"
+        }
+      }
+    },
+    "totalResources": {
+      "type": "object",
+      "value": {
+        "communities": "[parameters('numberOfCommunities')]",
+        "deployEnclaves": "[parameters('deployEnclaves')]"
+      }
+    },
+    "rbacSummary": {
+      "type": "array",
+      "copy": {
+        "count": "[length(range(0, parameters('numberOfCommunities')))]",
+        "input": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('{0}-rg', parameters('baseName'))), 'Microsoft.Resources/deployments', format('ave-community-{0}', range(0, parameters('numberOfCommunities'))[range(0, parameters('numberOfCommunities'))[copyIndex()]])), '2022-09-01').outputs.rbacSummary.value]"
+      }
+    },
+    "effectiveLocation": {
+      "type": "string",
+      "value": "[variables('canonicalLocation')]"
+    }
+  }
+}

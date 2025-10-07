@@ -8,7 +8,7 @@ The template now supports **three levels of configuration**:
 
 ```
 Community Level
-├── Approval settings, network addressing, DNS
+├── Network addressing, DNS, maintenance, RBAC overrides
 ├── Enclave Level
 │   ├── Network configuration, bastion settings, diagnostics
 │   └── Workload Level
@@ -27,7 +27,7 @@ communityConfigs: [
     // Community-level settings
     addressSpace: '10.0.0.0/16'    // MUST be unique per community
     dnsServers: []                 // Community DNS servers
-    approvalSettings: { ... }      // Community governance settings
+  // (approvalSettings omitted – not supported in current RP preview)
     
     // Nested enclave configurations
     enclaveConfigs: [
@@ -63,7 +63,7 @@ Each enclave within a community can have unique settings:
 | `customCidrRange` | string | Manual CIDR specification | `'10.0.1.0/24'` |
 | `allowSubnetCommunication` | bool | Inter-subnet communication | `true` |
 | `connectToAzureServices` | bool | Azure service connectivity | `true` |
-| `diagnosticDestination` | string | Diagnostic routing | `'EnclaveOnly'`, `'Both'` |
+| `diagnosticDestination` | string | Diagnostic routing (fallback to template default) | `'EnclaveOnly'`, `'Both'` |
 | `workloadConfigs` | array | Nested workload configurations | See below |
 
 ### Workload Configuration Properties
@@ -82,15 +82,10 @@ Each workload within an enclave can have unique settings:
 Single community with basic web application:
 
 ```bicep
-numberOfCommunities: 1
 communityConfigs: [
   {
     addressSpace: '10.0.0.0/16'
     dnsServers: []
-    approvalSettings: {
-      enclaveCreation: 'NotRequired'
-      // ... other settings with 'NotRequired'
-    }
     enclaveConfigs: [
       {
         bastionEnabled: true
@@ -115,12 +110,10 @@ communityConfigs: [
 Community with separate web, app, and database tiers:
 
 ```bicep
-numberOfCommunities: 1
 communityConfigs: [
   {
     addressSpace: '10.0.0.0/16'
     dnsServers: []
-    approvalSettings: { /* ... */ }
     enclaveConfigs: [
       // Web Tier Enclave
       {
@@ -183,16 +176,11 @@ communityConfigs: [
 Development, staging, and production communities:
 
 ```bicep
-numberOfCommunities: 3
 communityConfigs: [
   // Development Community
   {
     addressSpace: '10.0.0.0/16'
     dnsServers: []
-    approvalSettings: {
-      enclaveCreation: 'NotRequired'
-      // ... relaxed settings
-    }
     enclaveConfigs: [
       {
         bastionEnabled: true
@@ -212,10 +200,6 @@ communityConfigs: [
   {
     addressSpace: '10.1.0.0/16'
     dnsServers: ['8.8.8.8']
-    approvalSettings: {
-      enclaveCreation: 'Required'
-      // ... moderate restrictions
-    }
     enclaveConfigs: [
       {
         bastionEnabled: true
@@ -235,12 +219,6 @@ communityConfigs: [
   {
     addressSpace: '10.2.0.0/16'
     dnsServers: ['internal-dns-1', 'internal-dns-2']
-    approvalSettings: {
-      enclaveCreation: 'Required'
-      enclaveDeletion: 'Required'
-      minimumApproversRequired: 2
-      // ... strict governance
-    }
     enclaveConfigs: [
       // Separate enclaves for production tiers
       {
@@ -273,43 +251,7 @@ communityConfigs: [
 
 If you have existing templates using the old simple configuration:
 
-### Old Structure (Deprecated)
-```bicep
-numberOfCommunitiesPerCommunity: 2
-numberOfWorkloadsPerEnclave: 3
-enclaveConfig: {
-  bastionEnabled: true
-  networkSize: '/24'
-}
-```
-
-### New Structure (Current)
-```bicep
-communityConfigs: [
-  {
-    enclaveConfigs: [
-      {
-        bastionEnabled: true
-        networkSize: '/24'
-        workloadConfigs: [
-          { resourceGroupCollection: [] },
-          { resourceGroupCollection: [] },
-          { resourceGroupCollection: [] }
-        ]
-      },
-      {
-        bastionEnabled: true
-        networkSize: '/24'
-        workloadConfigs: [
-          { resourceGroupCollection: [] },
-          { resourceGroupCollection: [] },
-          { resourceGroupConfigs: [] }
-        ]
-      }
-    ]
-  }
-]
-```
+> Migration Note: Older scalar sizing parameters are removed. Add or remove objects in `communityConfigs[*].enclaveConfigs` / `workloadConfigs` arrays instead.
 
 ## Best Practices
 
@@ -328,18 +270,17 @@ communityConfigs: [
 - **Resource group strategy**: Use separate RGs per service or environment
 - **Naming convention**: Use consistent naming like `'tier-service-instance'`
 
-### Governance Settings
-- **Environment alignment**: Development = permissive, Production = restrictive
-- **Approval workflows**: More approvals for production communities
-- **Notification strategy**: Enable notifications for production changes
+### Governance / RBAC
+- Use RBAC inheritance & explicit empty arrays to clear undesired roles
+- Maintenance objects require justification when `mode == 'On'`
 
 ## Validation Rules
 
-The template validates:
-- ✅ `communityConfigs` array length matches `numberOfCommunities`
-- ✅ Each community has unique `addressSpace`
-- ✅ Each enclave within community has unique CIDR ranges
-- ✅ All required properties are specified
+The template validates (soft guardrails / may evolve):
+- ✅ `communityConfigs` length should match `numberOfCommunities`
+- ✅ Justification present when maintenance mode enabled
+- ✅ Custom CIDR supplied only when `networkSize == 'custom'`
+- ✅ RBAC arrays use object IDs (no display names)
 
 ## Common Patterns
 

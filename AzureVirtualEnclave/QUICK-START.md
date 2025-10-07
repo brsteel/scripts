@@ -2,25 +2,11 @@
 
 This guide shows how to deploy the simplest Azure Virtual Enclave setup for development.
 
-## Available Parameter Files
+## Parameter File
 
-### 1. Minimal Setup (`solution.minimal.bicepparam`)
-- **1 Community** → **1 Enclave** → **1 Workload**
-- Most basic possible deployment
-- Perfect for learning and initial testing
-
-```bash
-# Deploy minimal setup
-az deployment sub create \
-  --location "East US 2" \
-  --template-file solution.bicep \
-  --parameters solution.minimal.bicepparam
-```
-
-### 2. Simple Development (`solution.bicepparam`)  
-- **1 Community** → **1 Enclave** → **2 Workloads**
-- Good for basic application development
-- Includes separate app and data workloads
+### `solution.bicepparam`
+- Example included in repo (single community → one enclave → one or more workloads)
+- Modify nested arrays to scale (add enclaves/workloads) – no scalar count parameters required
 
 ```bash
 # Deploy simple development setup  
@@ -32,18 +18,7 @@ az deployment sub create \
 
 ## What Gets Deployed
 
-### Minimal Setup
-```
-Subscription
-└── Resource Group: minimal-ave-rg
-    └── Community: minimal-ave-community-0
-        └── Virtual Enclave: minimal-ave-community-0-enclave-0
-            ├── Azure Bastion (enabled)
-            ├── Virtual Network: minimal-vnet (10.0.0.0/24)
-            └── Workload: minimal-workload
-```
-
-### Simple Development Setup
+### Example Topology
 ```
 Subscription  
 └── Resource Group: simple-ave-dev-rg
@@ -70,13 +45,7 @@ az provider register --namespace Microsoft.Mission
 
 ### PowerShell
 ```powershell
-# Minimal deployment
-az deployment sub create `
-  --location "East US 2" `
-  --template-file solution.bicep `
-  --parameters solution.minimal.bicepparam
-
-# Simple development deployment  
+# Development deployment  
 az deployment sub create `
   --location "East US 2" `
   --template-file solution.bicep `
@@ -85,13 +54,7 @@ az deployment sub create `
 
 ### Bash
 ```bash
-# Minimal deployment
-az deployment sub create \
-  --location "East US 2" \
-  --template-file solution.bicep \
-  --parameters solution.minimal.bicepparam
-
-# Simple development deployment
+# Development deployment
 az deployment sub create \
   --location "East US 2" \
   --template-file solution.bicep \  
@@ -100,28 +63,14 @@ az deployment sub create \
 
 ## Customization Options
 
-### Change Location
-Edit the parameter file:
-```bicep
-param location = 'West US 2'  // Change to your preferred region
-```
+### Adjust Location / Network / Workload Names
+Edit `solution.bicepparam` directly. Add or remove objects in `enclaveConfigs` / `workloadConfigs` arrays to scale. Example workload entry:
 
-### Change Network Range
-Edit the parameter file:
 ```bicep
-addressSpace: '172.16.0.0/16'        // Different private IP range
-customCidrRange: '172.16.0.0/24'     // Matching enclave range
-```
-
-### Change Workload Names
-Edit the parameter file:
-```bicep
-workloadConfigs: [
-  {
-    name: 'my-custom-app'
-    resourceGroupCollection: ['rg-my-app']
-  }
-]
+{
+  name: 'my-custom-app'
+  resourceGroupCollection: ['rg-my-app']
+}
 ```
 
 ## Next Steps After Deployment
@@ -139,8 +88,8 @@ workloadConfigs: [
    - Use the AVE service console for advanced configuration
 
 4. **Scale Up**
-   - Modify parameter files to add more enclaves or workloads
-   - See [Nested Configuration Guide](NESTED-CONFIG-GUIDE.md) for complex scenarios
+  - Add objects to `communityConfigs[0].enclaveConfigs` or inside each enclave's `workloadConfigs`
+  - No need to adjust separate count parameters – the arrays are authoritative
 
 ## Cleanup
 

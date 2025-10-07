@@ -5,6 +5,7 @@ When deploying multiple Azure Virtual Enclave communities, each must have non-ov
 ## Quick Reference: Non-Overlapping Address Spaces
 
 ### RFC 1918 Private Address Ranges
+
 - **10.0.0.0/8**: 10.0.0.0 to 10.255.255.255 (16,777,216 addresses)
 - **172.16.0.0/12**: 172.16.0.0 to 172.31.255.255 (1,048,576 addresses)  
 - **192.168.0.0/16**: 192.168.0.0 to 192.168.255.255 (65,536 addresses)
@@ -12,6 +13,7 @@ When deploying multiple Azure Virtual Enclave communities, each must have non-ov
 ## Recommended Configurations by Number of Communities
 
 ### 2 Communities
+
 ```bicep
 communityConfigs: [
   { addressSpace: '10.0.0.0/16' },  // Community 0: 10.0.x.x
@@ -20,6 +22,7 @@ communityConfigs: [
 ```
 
 ### 3 Communities  
+
 ```bicep
 communityConfigs: [
   { addressSpace: '10.0.0.0/16' },  // Community 0: 10.0.x.x
@@ -29,6 +32,7 @@ communityConfigs: [
 ```
 
 ### 5 Communities
+
 ```bicep
 communityConfigs: [
   { addressSpace: '10.0.0.0/16' },  // Community 0: 10.0.x.x
@@ -40,6 +44,7 @@ communityConfigs: [
 ```
 
 ### 10 Communities (Maximum)
+
 ```bicep
 communityConfigs: [
   { addressSpace: '10.0.0.0/16' },  // Community 0
@@ -58,6 +63,7 @@ communityConfigs: [
 ## Alternative Network Schemes
 
 ### Mixed RFC 1918 Ranges
+
 For organizations with existing network infrastructure:
 
 ```bicep
@@ -69,6 +75,7 @@ communityConfigs: [
 ```
 
 ### Large Environments (/12 subnets)
+
 For very large deployments with many enclaves:
 
 ```bicep
@@ -82,6 +89,7 @@ communityConfigs: [
 ## Environment-Specific Examples
 
 ### Development, Staging, Production
+
 ```bicep
 communityConfigs: [
   // Development Environment
@@ -106,6 +114,7 @@ communityConfigs: [
 ```
 
 ### Multi-Region Deployment
+
 ```bicep
 communityConfigs: [
   // East US Community
@@ -130,22 +139,22 @@ communityConfigs: [
 
 ### Subnet Allocation Within Communities
 
-With `numberOfEnclavesPerCommunity = 5` and `/24` enclave networks:
-- Community `10.0.0.0/16` can have:
-  - Enclave 0: `10.0.0.0/24` (254 hosts)
-  - Enclave 1: `10.0.1.0/24` (254 hosts)
-  - Enclave 2: `10.0.2.0/24` (254 hosts)
-  - Enclave 3: `10.0.3.0/24` (254 hosts)
-  - Enclave 4: `10.0.4.0/24` (254 hosts)
-  - Room for 251 more `/24` subnets
+Example enclave allocation (conceptual – actual CIDR application is RP defined):
+
+```text
+Community 10.0.0.0/16
+  Enclave A (requested /24 intent)
+  Enclave B (requested /24 intent)
+  Enclave C (custom 10.0.50.0/24 intent)
+```
 
 ### Capacity Planning
 
-| Community Size | Enclaves | Subnet Size | Total Hosts per Community |
-|---------------|----------|-------------|---------------------------|
-| `/16` | 5 | `/24` | 1,270 hosts |
-| `/16` | 5 | `/23` | 2,540 hosts |
-| `/12` | 5 | `/24` | 1,270 hosts (massive room for growth) |
+| Community CIDR | Illustrative Enclaves (intent) | Enclave Size Hints | Notes |
+|----------------|-------------------------------|--------------------|-------|
+| `/16` | 5 | `/24` | Plenty of space for future expansion |
+| `/16` | 5 | `/23` | Larger intent blocks; leave gaps for growth |
+| `/12` | many | mixed | Overprovision unless you truly need scale |
 
 ## Best Practices
 
@@ -160,15 +169,17 @@ With `numberOfEnclavesPerCommunity = 5` and `/24` enclave networks:
 ## Validation
 
 Before deployment, verify:
+
 - [ ] No overlapping address spaces between communities
 - [ ] Address spaces don't conflict with existing organizational networks
 - [ ] Sufficient addresses for planned enclaves and workloads
-- [ ] Array length matches `numberOfCommunities` parameter
+- [ ] Array length matches `numberOfCommunities` parameter (guardrail)
 - [ ] DNS servers are appropriate for each community's purpose
 
 ## Common Mistakes to Avoid
 
 ❌ **Don't do this:**
+
 ```bicep
 communityConfigs: [
   { addressSpace: '10.0.0.0/16' },
@@ -177,6 +188,7 @@ communityConfigs: [
 ```
 
 ❌ **Don't do this:**
+
 ```bicep
 communityConfigs: [
   { addressSpace: '10.0.0.0/16' },
@@ -185,6 +197,7 @@ communityConfigs: [
 ```
 
 ✅ **Do this instead:**
+
 ```bicep
 communityConfigs: [
   { addressSpace: '10.0.0.0/16' },
