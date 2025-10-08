@@ -298,3 +298,14 @@ output rbacSummary object = {
   }
   enclaves: _enclaveSummaries
 }
+// Community maintenance validation output
+output communityMaintenanceValidation object = {
+  mode: empty(communityConfig.?maintenance.?mode) ? 'Off' : communityConfig.maintenance.mode
+  status: _maintenanceValidationFailed ? 'Fail' : 'Pass'
+  issues: _maintenanceValidationFailed ? _maintenanceValidationMessages : []
+}
+// Enclave maintenance validations output (built post-deployment using module outputs)
+output enclaveMaintenanceValidations array = [for (enc, i) in enclaveConfigs: {
+  name: '${communityName}e${i}'
+  validation: virtualEnclaves[i].outputs.enclaveMaintenanceValidation
+}]

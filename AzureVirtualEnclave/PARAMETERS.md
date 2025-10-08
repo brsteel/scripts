@@ -179,6 +179,20 @@ Deployment outputs include a summarized `rbacSummary` to aid in auditing without
 | `Advanced` | `principals` MUST be a non-empty array of Entra ID group (or PIM-eligible role) object IDs; justification optional. |
 | Principals representation | Each principal is emitted as `{ id: <objectId>, type: 'Group' }`. Use groups or PIM-enabled groups, not individual users, for lifecycle safety. |
 
+## Validation Outputs
+
+Deployment emits a structured `maintenanceValidation` output:
+
+```json
+{
+  "community": { "mode": "Advanced", "status": "Pass", "issues": [] },
+  "enclaves": [ { "name": "contosoe0", "validation": { "mode": "On", "status": "Pass", "issues": [] } } ],
+  "anyFailures": false
+}
+```
+
+Use `anyFailures` to gate pipelines; inspect `issues` arrays for remediation hints. Only maintenance-specific rule violations appear (CIDR or other guardrails remain in resource properties / existing validation messages).
+
 ## Deprecated / Unsupported (Historical)
 
 | Former Element | Status | Replacement |

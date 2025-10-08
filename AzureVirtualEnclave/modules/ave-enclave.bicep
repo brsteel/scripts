@@ -264,3 +264,13 @@ output enclaveMaintenance object = {
   principals: (length(enclaveConfig.?maintenance.?principals ?? []) > 0) ? enclaveConfig.maintenance.principals : []
   justification: (enclaveConfig.?maintenance.?mode == 'On') ? (enclaveConfig.?maintenance.?justification ?? '') : ''
 }
+// Maintenance validation (maintenance-specific issues only)
+var _maintenanceIssueParts = concat(
+  _maintenanceOnMissingJustification ? ['maintenance.justification required when maintenance.mode==On'] : [],
+  _advancedMissingPrincipals ? ['maintenance.principals required (non-empty array) when maintenance.mode==Advanced'] : []
+)
+output enclaveMaintenanceValidation object = {
+  mode: empty(enclaveConfig.?maintenance.?mode) ? 'Off' : enclaveConfig.maintenance.mode
+  status: (length(_maintenanceIssueParts) > 0) ? 'Fail' : 'Pass'
+  issues: (length(_maintenanceIssueParts) > 0) ? _maintenanceIssueParts : []
+}

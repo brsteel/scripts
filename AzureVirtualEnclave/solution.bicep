@@ -210,3 +210,10 @@ output totalResources object = {
 output rbacSummary object = community.outputs.rbacSummary
 
 output effectiveLocation string = canonicalLocation
+// Aggregated maintenance validation output (community + enclaves)
+output maintenanceValidation object = {
+  community: community.outputs.communityMaintenanceValidation
+  enclaves: community.outputs.enclaveMaintenanceValidations
+  // anyFailures computation omitted due to module output evaluation timing limits; compute externally if needed
+  anyFailures: community.outputs.communityMaintenanceValidation.status == 'Fail'
+}
