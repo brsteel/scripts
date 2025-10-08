@@ -72,8 +72,9 @@ param enclaveUserAccessAdministrators array = []
 // Inline RBAC role assignment scaffolding removed (RP rejected inline payload). Using standard roleAssignments resources.
 // Removed unused empty fragments
 
-// Maintenance principals
-var maintenancePrincipals = [for p in (enclaveConfig.?maintenance.?principals ?? []): { id: p, type: 'Group' }]
+// Maintenance principals (allow override of type via maintenance.principalType)
+var _enclaveMaintenancePrincipalType = empty(enclaveConfig.?maintenance.?principalType) ? 'Group' : enclaveConfig.maintenance.principalType
+var maintenancePrincipals = [for p in (enclaveConfig.?maintenance.?principals ?? []): { id: p, type: _enclaveMaintenancePrincipalType }]
 var enclaveMaintenanceMode = union(
   {
     mode: (empty(enclaveConfig.?maintenance.?mode) ? 'Off' : enclaveConfig.maintenance.mode)

@@ -83,8 +83,9 @@ param deployEnclaves bool = true
 
 // Inline RBAC data structures removed (RP rejected inline assignments). Using standard roleAssignments resources instead.
 
-// Maintenance principals (if supplied) - object form expected by RP
-var maintenancePrincipals = [for p in (communityConfig.?maintenance.?principals ?? []): { id: p, type: 'Group' }]
+// Maintenance principals (if supplied) - allow explicit principalType override (Group|User) via maintenance.principalType
+var _maintenancePrincipalType = empty(communityConfig.?maintenance.?principalType) ? 'Group' : communityConfig.maintenance.principalType
+var maintenancePrincipals = [for p in (communityConfig.?maintenance.?principals ?? []): { id: p, type: _maintenancePrincipalType }]
 
 // Normalized maintenance mode (supports Off | On | Advanced)
 var _maintenanceMode = toLower(communityConfig.?maintenance.?mode ?? 'off')
@@ -101,7 +102,7 @@ var _maintenanceValidationMessage = _maintenanceValidationFailed ? join(_mainten
 var communityMaintenanceMode = union(
   {
     mode: empty(communityConfig.?maintenance.?mode) ? 'Off' : communityConfig.maintenance.mode
-    principals: ((_maintenanceMode == 'on' || _maintenanceMode == 'advanced') && length(maintenancePrincipals) > 0) ? maintenancePrincipals : []
+  principals: ((_maintenanceMode == 'on' || _maintenanceMode == 'advanced') && length(maintenancePrincipals) > 0) ? maintenancePrincipals : []
   },
   (_maintenanceMode == 'on' && !empty(communityConfig.?maintenance.?justification)) ? { justification: communityConfig.maintenance.justification } : {}
 )
