@@ -282,7 +282,6 @@ If you have existing templates using the old simple configuration:
 
 The template validates (soft guardrails / may evolve):
 
-- ✅ `communityConfigs` length must match `numberOfCommunities` (most deployments keep this at 1)
 - ✅ Justification present when maintenance mode enabled
 - ✅ Custom CIDR supplied only when `networkSize == 'custom'`
 - ✅ RBAC arrays use object IDs (no display names)

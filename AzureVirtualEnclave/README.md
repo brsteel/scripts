@@ -239,7 +239,6 @@ az deployment sub create \
   --location "East US 2" \
   --template-file solution.bicep \
   --parameters baseName="myenclave" \
-               numberOfCommunities=1 \
                @myNestedConfigOverrides.json
 ```
 
@@ -249,8 +248,7 @@ az deployment sub create \
 |-----------|------|---------|-------------|
 | `baseName` | string | - | Base name prefix for all resources |
 | `location` | string | deployment().location | Azure region for deployment |
-| `numberOfCommunities` | int | 1 | Must equal `length(communityConfigs)` (1–10). Typical = 1; scale >1 only for isolated governance / lifecycle boundaries. |
-| `communityConfigs` | array | [] | Nested community → enclave → workload configuration objects |
+| `communityConfig` | object | {} | Single community configuration object with nested enclaves & workloads |
 | `deployEnclaves` | bool | true | Skip enclaves/workloads when false (community-only phase) |
 | `enableGovernedServiceList` | bool | false | Emit governedServiceList (preview – optional) |
 | `diagnosticDestinationDefault` | string | Both | Default diagnostic routing (`EnclaveOnly`\|`Both`) |
@@ -380,7 +378,7 @@ These assertions provide early feedback before the deployment reaches the resour
 
 ### Example Scaling Patterns
 
-All scaling is controlled by nested arrays inside `communityConfigs` (parameter file). No scalar enclave/workload count parameters exist.
+All scaling is controlled by nested arrays inside `communityConfig.enclaveConfigs` (parameter file). No scalar enclave/workload count parameters exist.
 
 | Scenario | Communities | Enclaves (total) | Workloads (total) |
 |----------|-------------|------------------|-------------------|
@@ -388,7 +386,7 @@ All scaling is controlled by nested arrays inside `communityConfigs` (parameter 
 | Test | 2 | 4 | 12 |
 | Prod (illustrative) | 5 | 15 | 60 |
 
-Counts are illustrative; adapt `communityConfigs[*].enclaveConfigs[*].workloadConfigs` accordingly. For an authoritative count, inspect your parameter file or extend the template with custom outputs once Bicep adds richer aggregation functions.
+Counts are illustrative; adapt `communityConfig.enclaveConfigs[*].workloadConfigs` accordingly. For an authoritative count, inspect your parameter file or extend the template with custom outputs once Bicep adds richer aggregation functions.
 
 ## Accessing Virtual Machines
 

@@ -88,8 +88,9 @@ Edit `solution.bicepparam` directly. Add or remove objects in `enclaveConfigs` /
    - Use the AVE service console for advanced configuration
 
 4. **Scale Up**
-  - Add objects to `communityConfigs[0].enclaveConfigs` or inside each enclave's `workloadConfigs`
-  - No need to adjust separate count parameters – the arrays are authoritative
+
+   - Add objects to `communityConfig.enclaveConfigs` or inside each enclave's `workloadConfigs`
+   - No need to adjust separate count parameters – the arrays are authoritative
 
 ## Cleanup
 

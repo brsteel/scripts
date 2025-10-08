@@ -9,10 +9,9 @@ This document captures the **current, supported** parameters for the subscriptio
 | Name | Type | Default | Required | Description |
 |------|------|---------|----------|-------------|
 | `location` | string | `deployment().location` | No | Azure region for the deployment (canonicalized internally). |
-| `baseName` | string | n/a | Yes | Short base name prefix; used for resource group & community naming (`<baseName>-rg`, `<baseName>c0`). Keep ≤ 24 chars. |
-| `numberOfCommunities` | int | `1` | Yes | Must equal `length(communityConfigs)` (range 1‑10). Typical = 1; increase only when distinct governance or lifecycle boundaries are required. Guardrail only; authoritative shape is the array itself. |
-| `deployEnclaves` | bool | `true` | No | Set `false` to deploy communities only (phased rollout / troubleshooting). |
-| `communityConfigs` | array | `[]` | Yes | Hierarchical configuration: each element declares a community plus nested enclaves & workloads. |
+| `baseName` | string | n/a | Yes | Short base name prefix; used for resource group & community naming (`<baseName>-rg`). Keep concise (≤ 28 chars). |
+| `deployEnclaves` | bool | `true` | No | Set `false` to skip enclave/workload creation (staged troubleshooting). |
+| `communityConfig` | object | `{}` | Yes | Single community object containing `enclaveConfigs` and workloads per enclave. |
 | `enableGovernedServiceList` | bool | `false` | No | Emit governedServiceList into community properties (preview feature toggle). |
 | `diagnosticDestinationDefault` | string | `Both` | No | Fallback when an enclave omits `diagnosticDestination` (allowed: `EnclaveOnly`\|`Both`). |
 | `contributorPrincipals` | array | `[]` | No | Principal object IDs granted Contributor at all scopes (unless cleared/overridden). |
@@ -27,13 +26,12 @@ The template exposes discrete arrays for standard built‑in roles to enable lea
 
 All are optional; an empty array means *no* role assignments for that bucket are created at the community scope. Inheritance to enclaves & workloads follows the clearable model (see below).
 
-## Hierarchical Configuration (`communityConfigs`)
+## Community Configuration (`communityConfig`)
 
-Each object in `communityConfigs` represents one community:
+Single object supplying enclaves and workloads:
 
 ```bicep
-communityConfigs: [
-  {
+communityConfig: {
     addressSpace: '10.10.0.0/16'
     dnsServers: []
     enclaveConfigs: [
@@ -53,7 +51,6 @@ communityConfigs: [
       }
     ]
   }
-]
 ```
 
 ### Community Object Fields
@@ -127,9 +124,8 @@ Deployment outputs include a summarized `rbacSummary` to aid in auditing without
 
 ```bicep
 param baseName = 'contoso'
-param numberOfCommunities = 1 // Typical deployments use a single community; bump only for deliberate separation.
 param enableGovernedServiceList = true
-param communityConfigs = [
+param communityConfig = {
   {
     addressSpace: '10.10.0.0/16'
     dnsServers: []
@@ -149,7 +145,6 @@ param communityConfigs = [
       }
     ]
   }
-]
 param contributorPrincipals = ['<objectId>']
 param tags = {
   Environment: 'Test'

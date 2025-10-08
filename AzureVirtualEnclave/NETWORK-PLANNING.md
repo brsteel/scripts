@@ -173,7 +173,6 @@ Before deployment, verify:
 - [ ] No overlapping address spaces between communities
 - [ ] Address spaces don't conflict with existing organizational networks
 - [ ] Sufficient addresses for planned enclaves and workloads
-- [ ] Array length matches `numberOfCommunities` parameter (guardrail)
 - [ ] DNS servers are appropriate for each community's purpose
 
 ## Common Mistakes to Avoid

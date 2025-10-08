@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.37.4.10188",
-      "templateHash": "8504752604070746095"
+      "templateHash": "4961718329631613191"
     }
   },
   "parameters": {
@@ -19,7 +19,7 @@
     "baseName": {
       "type": "string",
       "minLength": 3,
-      "maxLength": 24,
+      "maxLength": 28,
       "metadata": {
         "description": "Base name for the deployment. MUST be short because the RP creates hosted RGs like <name>-HostedResources-<nonce>."
       }
@@ -29,15 +29,6 @@
       "defaultValue": true,
       "metadata": {
         "description": "When false, enclaves (and workloads) are skipped – deploy communities only (for phased troubleshooting)."
-      }
-    },
-    "numberOfCommunities": {
-      "type": "int",
-      "defaultValue": 2,
-      "minValue": 1,
-      "maxValue": 10,
-      "metadata": {
-        "description": "Number of Azure Virtual Enclave communities to deploy (1-10). Must match the length of communityConfigs array."
       }
     },
     "enableGovernedServiceList": {
@@ -129,58 +120,56 @@
         "description": "Community User Access Administrator group/object IDs"
       }
     },
-    "communityConfigs": {
-      "type": "array",
-      "defaultValue": [
-        {
-          "addressSpace": "10.0.0.0/16",
-          "dnsServers": [],
-          "enclaveConfigs": [
-            {
-              "bastionEnabled": true,
-              "networkName": "web-tier-vnet",
-              "networkSize": "/24",
-              "customCidrRange": "10.0.0.0/24",
-              "allowSubnetCommunication": true,
-              "connectToAzureServices": true,
-              "diagnosticDestination": "EnclaveOnly",
-              "workloadConfigs": [
-                {
-                  "name": "web-server-1",
-                  "resourceGroupCollection": [
-                    "rg-web-primary"
-                  ]
-                },
-                {
-                  "name": "web-server-2",
-                  "resourceGroupCollection": [
-                    "rg-web-secondary"
-                  ]
-                }
-              ]
-            },
-            {
-              "bastionEnabled": false,
-              "networkName": "app-tier-vnet",
-              "networkSize": "/24",
-              "customCidrRange": "10.0.1.0/24",
-              "allowSubnetCommunication": false,
-              "connectToAzureServices": true,
-              "diagnosticDestination": "Both",
-              "workloadConfigs": [
-                {
-                  "name": "app-server-1",
-                  "resourceGroupCollection": [
-                    "rg-app-primary"
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      ],
+    "communityConfig": {
+      "type": "object",
+      "defaultValue": {
+        "addressSpace": "10.0.0.0/16",
+        "dnsServers": [],
+        "enclaveConfigs": [
+          {
+            "bastionEnabled": true,
+            "networkName": "web-tier-vnet",
+            "networkSize": "/24",
+            "customCidrRange": "10.0.0.0/24",
+            "allowSubnetCommunication": true,
+            "connectToAzureServices": true,
+            "diagnosticDestination": "EnclaveOnly",
+            "workloadConfigs": [
+              {
+                "name": "web-server-1",
+                "resourceGroupCollection": [
+                  "rg-web-primary"
+                ]
+              },
+              {
+                "name": "web-server-2",
+                "resourceGroupCollection": [
+                  "rg-web-secondary"
+                ]
+              }
+            ]
+          },
+          {
+            "bastionEnabled": false,
+            "networkName": "app-tier-vnet",
+            "networkSize": "/24",
+            "customCidrRange": "10.0.1.0/24",
+            "allowSubnetCommunication": false,
+            "connectToAzureServices": true,
+            "diagnosticDestination": "Both",
+            "workloadConfigs": [
+              {
+                "name": "app-server-1",
+                "resourceGroupCollection": [
+                  "rg-app-primary"
+                ]
+              }
+            ]
+          }
+        ]
+      },
       "metadata": {
-        "description": "Array of community configurations with nested enclave and workload configurations."
+        "description": "Community configuration (single object) with nested enclave and workload configurations."
       }
     },
     "tags": {
@@ -198,7 +187,12 @@
   "variables": {
     "canonicalLocation": "[toLower(replace(parameters('location'), ' ', ''))]",
     "projectedCommunityHostedRgLength": "[add(length(format('{0}c0', parameters('baseName'))), 30)]",
-    "projectedEnclaveHostedRgLength": "[add(length(format('{0}c0e0', parameters('baseName'))), 30)]"
+    "projectedEnclaveHostedRgLength": "[add(length(format('{0}c0e0', parameters('baseName'))), 30)]",
+    "communityNameLengthLimit": 30,
+    "longestCommunityName": "[parameters('baseName')]",
+    "longestEnclaveName": "[format('{0}e0', parameters('baseName'))]",
+    "communityNameWithinLimit": "[lessOrEquals(length(variables('longestCommunityName')), variables('communityNameLengthLimit'))]",
+    "enclaveNameWithinLimit": "[lessOrEquals(length(variables('longestEnclaveName')), variables('communityNameLengthLimit'))]"
   },
   "resources": [
     {
@@ -209,13 +203,9 @@
       "tags": "[parameters('tags')]"
     },
     {
-      "copy": {
-        "name": "communities",
-        "count": "[length(range(0, parameters('numberOfCommunities')))]"
-      },
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2022-09-01",
-      "name": "[format('ave-community-{0}', range(0, parameters('numberOfCommunities'))[copyIndex()])]",
+      "name": "ave-community",
       "resourceGroup": "[format('{0}-rg', parameters('baseName'))]",
       "properties": {
         "expressionEvaluationOptions": {
@@ -227,16 +217,16 @@
             "value": "[variables('canonicalLocation')]"
           },
           "communityName": {
-            "value": "[format('{0}c{1}', parameters('baseName'), range(0, parameters('numberOfCommunities'))[copyIndex()])]"
+            "value": "[parameters('baseName')]"
           },
           "deployEnclaves": {
             "value": "[parameters('deployEnclaves')]"
           },
           "communityConfig": {
-            "value": "[parameters('communityConfigs')[range(0, parameters('numberOfCommunities'))[copyIndex()]]]"
+            "value": "[parameters('communityConfig')]"
           },
           "tags": {
-            "value": "[union(parameters('tags'), createObject('CommunityIndex', string(range(0, parameters('numberOfCommunities'))[copyIndex()])))]"
+            "value": "[parameters('tags')]"
           },
           "communityContributors": {
             "value": "[parameters('contributorPrincipals')]"
@@ -1676,38 +1666,34 @@
       "value": {
         "baseName": "[parameters('baseName')]",
         "projectedCommunityHostedRgLength": "[variables('projectedCommunityHostedRgLength')]",
-        "projectedEnclaveHostedRgLength": "[variables('projectedEnclaveHostedRgLength')]"
+        "projectedEnclaveHostedRgLength": "[variables('projectedEnclaveHostedRgLength')]",
+        "portalCommunityNameLimit": "[variables('communityNameLengthLimit')]",
+        "longestCommunityName": "[variables('longestCommunityName')]",
+        "longestCommunityNameLength": "[length(variables('longestCommunityName'))]",
+        "longestEnclaveName": "[variables('longestEnclaveName')]",
+        "longestEnclaveNameLength": "[length(variables('longestEnclaveName'))]",
+        "communityNameWithinLimit": "[variables('communityNameWithinLimit')]",
+        "enclaveNameWithinLimit": "[variables('enclaveNameWithinLimit')]"
       }
     },
     "resourceGroupName": {
       "type": "string",
       "value": "[format('{0}-rg', parameters('baseName'))]"
     },
-    "deployedCommunities": {
-      "type": "array",
-      "copy": {
-        "count": "[length(range(0, parameters('numberOfCommunities')))]",
-        "input": {
-          "name": "[format('{0}c{1}', parameters('baseName'), range(0, parameters('numberOfCommunities'))[copyIndex()])]",
-          "resourceGroupName": "[format('{0}-rg', parameters('baseName'))]",
-          "location": "[variables('canonicalLocation')]",
-          "resourceId": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('{0}-rg', parameters('baseName'))), 'Microsoft.Resources/deployments', format('ave-community-{0}', range(0, parameters('numberOfCommunities'))[range(0, parameters('numberOfCommunities'))[copyIndex()]])), '2022-09-01').outputs.communityResourceId.value]"
-        }
-      }
+    "communityResourceId": {
+      "type": "string",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('{0}-rg', parameters('baseName'))), 'Microsoft.Resources/deployments', 'ave-community'), '2022-09-01').outputs.communityResourceId.value]"
     },
     "totalResources": {
       "type": "object",
       "value": {
-        "communities": "[parameters('numberOfCommunities')]",
+        "communities": 1,
         "deployEnclaves": "[parameters('deployEnclaves')]"
       }
     },
     "rbacSummary": {
-      "type": "array",
-      "copy": {
-        "count": "[length(range(0, parameters('numberOfCommunities')))]",
-        "input": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('{0}-rg', parameters('baseName'))), 'Microsoft.Resources/deployments', format('ave-community-{0}', range(0, parameters('numberOfCommunities'))[range(0, parameters('numberOfCommunities'))[copyIndex()]])), '2022-09-01').outputs.rbacSummary.value]"
-      }
+      "type": "object",
+      "value": "[reference(extensionResourceId(format('/subscriptions/{0}/resourceGroups/{1}', subscription().subscriptionId, format('{0}-rg', parameters('baseName'))), 'Microsoft.Resources/deployments', 'ave-community'), '2022-09-01').outputs.rbacSummary.value]"
     },
     "effectiveLocation": {
       "type": "string",
