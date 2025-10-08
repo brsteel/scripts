@@ -26,6 +26,31 @@ The template exposes discrete arrays for standard built‑in roles to enable lea
 
 All are optional; an empty array means *no* role assignments for that bucket are created at the community scope. Inheritance to enclaves & workloads follows the clearable model (see below).
 
+| Parameter | Role Applied | Built-in Role Name | Role Definition ID | Behavior |
+|-----------|--------------|--------------------|--------------------|----------|
+| `contributorPrincipals` | Community / Enclave / Workload | Contributor | b24988ac-6180-42a0-ab88-20f7382dd24c | Assigned at community; inherited unless cleared downstream |
+| `communityReaders` | Community | Reader | acdd72a7-3385-48ef-bd42-f606fba81ae7 | Inherited to enclaves/workloads unless overridden/cleared |
+| `communityNetworkContributors` | Community | Network Contributor | 4d97b98b-1d4f-4787-a291-c67834d212e7 | Grants network-level management (preview logical intent) |
+| `communityMonitoringReaders` | Community | Monitoring Reader | 43d0d8ad-25c7-4714-9337-8ba259a9fe05 | Read-only monitoring visibility |
+| `communityMonitoringContributors` | Community | Monitoring Contributor | 749f88d5-cbae-40b8-bcfc-e573ddc772fa | Modify monitoring / insights config |
+| `communityLogAnalyticsReaders` | Community | Log Analytics Reader | 73c42c96-874c-492b-b04d-ab87d138a893 | Read logs & saved searches |
+| `communityLogAnalyticsContributors` | Community | Log Analytics Contributor | 92aaf0da-9dab-42b6-94a3-d43ce8d16293 | Manage LA workspace solutions / config |
+| `communitySecurityReaders` | Community | Security Reader | 8d32ff11-19e7-4f25-8d7a-4176c81c0f83 | Read security posture/events |
+| `communitySecurityAdmins` | Community | Security Admin | fb1c8493-542b-48ef-b624-b4c8fea62acd | Configure/dismiss security findings |
+| `communityUserAccessAdministrators` | Community | User Access Administrator | 18d7d88d-d35e-4fb5-a5c3-7773a3e3d1af | Delegate RBAC management (use sparingly) |
+
+Clearing / overriding at enclave or workload level:
+
+```bicep
+// Inside an enclave or workload config
+rbac: {
+  monitoringContributors: []   // explicitly remove inherited monitoring contributors here
+  readers: [ '00000000-0000-0000-0000-000000000001' ] // replace inherited readers with this single principal
+}
+```
+
+Any bucket key present (even with an empty array) stops inheritance for that bucket. Omitted buckets inherit unchanged.
+
 ## Community Configuration (`communityConfig`)
 
 Single object supplying enclaves and workloads:
