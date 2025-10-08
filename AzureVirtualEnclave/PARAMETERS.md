@@ -51,6 +51,44 @@ rbac: {
 
 Any bucket key present (even with an empty array) stops inheritance for that bucket. Omitted buckets inherit unchanged.
 
+### Enclave & Workload RBAC Overrides
+
+At enclave or workload scope, the `rbac` object uses the **same bucket key names without the `community` prefix**:
+
+```bicep
+enclaveConfigs: [
+  {
+    networkName: 'enc0-vnet'
+    // ...other enclave fields
+    rbac: {
+      readers: ['11111111-1111-1111-1111-111111111111'] // replace inherited readers
+      monitoringContributors: []                        // explicitly clear this bucket
+    }
+    workloadConfigs: [
+      {
+        name: 'workload-a'
+        rbac: {
+          contributors: [] // clear inherited contributor principals just for this workload
+          logReaders: ['22222222-2222-2222-2222-222222222222']
+        }
+      }
+    ]
+  }
+]
+```
+
+Supported bucket property names inside `rbac` objects at enclave/workload level:
+
+`contributors`, `readers`, `networkContributors`, `monitoringReaders`, `monitoringContributors`, `logReaders`, `logContributors`, `securityReaders`, `securityAdmins`, `userAccessAdministrators`.
+
+Inheritance resolution order (per bucket):
+
+1. Workload `rbac.<bucket>` if present (may be empty to clear)
+2. Else Enclave `rbac.<bucket>` if present
+3. Else Community top-level bucket array
+
+The deployment output `rbacSummary` surfaces effective arrays for community and enclaves; each workload emits its own `workloadRbacEffective` object inside the enclave module outputs to aid audit pipelines.
+
 ## Community Configuration (`communityConfig`)
 
 Single object supplying enclaves and workloads:
@@ -151,25 +189,24 @@ Deployment outputs include a summarized `rbacSummary` to aid in auditing without
 param baseName = 'contoso'
 param enableGovernedServiceList = true
 param communityConfig = {
-  {
-    addressSpace: '10.10.0.0/16'
-    dnsServers: []
-    enclaveConfigs: [
-      {
-        bastionEnabled: true
-        networkName: 'enc0-vnet'
-        networkSize: '/24'
-        allowSubnetCommunication: true
-        connectToAzureServices: true
-        workloadConfigs: [
-          {
-            name: 'workload-a'
-            resourceGroupCollection: ['rg-contoso-a']
-          }
-        ]
-      }
-    ]
-  }
+  addressSpace: '10.10.0.0/16'
+  dnsServers: []
+  enclaveConfigs: [
+    {
+      bastionEnabled: true
+      networkName: 'enc0-vnet'
+      networkSize: '/24'
+      allowSubnetCommunication: true
+      connectToAzureServices: true
+      workloadConfigs: [
+        {
+          name: 'workload-a'
+          resourceGroupCollection: ['rg-contoso-a']
+        }
+      ]
+    }
+  ]
+}
 param contributorPrincipals = ['<objectId>']
 param tags = {
   Environment: 'Test'
