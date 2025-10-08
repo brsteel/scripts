@@ -22,16 +22,15 @@ param communityUserAccessAdministrators = []
 param communityConfig = {
   addressSpace: '10.10.0.0/16'
   dnsServers: []
-  // Optional community-level maintenance object (example off)
+  // Community now in Advanced maintenance with required principals
   maintenance: {
-    mode: 'Off'
+    mode: 'Advanced'
+    principals: [
+      'abd8437b-107e-4c1b-9d65-6613f079ce61' // PIM-enabled group (example)
+    ]
   }
-  // Optional community-level RBAC clear/override example (commented)
-  // rbac: {
-  //   readers: [] // would clear inherited communityReaders (if any were supplied above)
-  // }
   enclaveConfigs: [
-    // Enclave 0 with explicit RBAC override (adds a dedicated reader & clears monitoringContributors)
+    // Enclave 0 remains Off (inherits none; separate test of mix)
     {
       bastionEnabled: true
       networkName: 'enc0-vnet'
@@ -39,19 +38,14 @@ param communityConfig = {
       allowSubnetCommunication: true
       connectToAzureServices: true
       diagnosticDestination: 'Both'
-      rbac: {
-        readers: ['00000000-0000-0000-0000-000000000001']
-        monitoringContributors: [] // clear (none wanted at enclave/workload scopes)
-      }
       workloadConfigs: [
         {
           name: 'workload-a'
           resourceGroupCollection: ['rg-contoso-a']
-          // Workload inherits enclave readers + cleared monitoringContributors
         }
       ]
     }
-    // Enclave 1 demonstrating workload-level RBAC override + clearing contributors
+    // Enclave 1 explicitly sets Advanced with its own principals
     {
       bastionEnabled: false
       networkName: 'enc1-vnet'
@@ -59,14 +53,14 @@ param communityConfig = {
       allowSubnetCommunication: false
       connectToAzureServices: true
       diagnosticDestination: 'EnclaveOnly'
+      maintenance: {
+        mode: 'Advanced'
+        principals: [ '00000000-0000-0000-0000-0000000000BB' ]
+      }
       workloadConfigs: [
         {
           name: 'workload-b'
           resourceGroupCollection: ['rg-contoso-b']
-          rbac: {
-            contributors: [] // clear inherited Contributor principals here
-            logReaders: ['00000000-0000-0000-0000-0000000000AA']
-          }
         }
       ]
     }
