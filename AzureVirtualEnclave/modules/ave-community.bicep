@@ -83,16 +83,27 @@ param deployEnclaves bool = true
 
 // Inline RBAC data structures removed (RP rejected inline assignments). Using standard roleAssignments resources instead.
 
-// Maintenance principals (if supplied)
+// Maintenance principals (if supplied) - object form expected by RP
 var maintenancePrincipals = [for p in (communityConfig.?maintenance.?principals ?? []): { id: p, type: 'Group' }]
 
-// Maintenance mode object (only include justification when On and provided)
+// Normalized maintenance mode (supports Off | On | Advanced)
+var _maintenanceMode = toLower(communityConfig.?maintenance.?mode ?? 'off')
+var _maintenanceOnMissingJustification = (_maintenanceMode == 'on') && empty(communityConfig.?maintenance.?justification)
+var _advancedMissingPrincipals = (_maintenanceMode == 'advanced') && (length(communityConfig.?maintenance.?principals ?? []) == 0)
+var _maintenanceValidationFailed = _maintenanceOnMissingJustification || _advancedMissingPrincipals
+var _maintenanceValidationMessages = concat(
+  _maintenanceOnMissingJustification ? ['maintenance.justification required when maintenance.mode==On'] : [],
+  _advancedMissingPrincipals ? ['maintenance.principals required (non-empty array) when maintenance.mode==Advanced'] : []
+)
+var _maintenanceValidationMessage = _maintenanceValidationFailed ? join(_maintenanceValidationMessages, ' | ') : ''
+
+// Maintenance mode object (include principals for On/Advanced, justification only when provided & mode On)
 var communityMaintenanceMode = union(
   {
-    mode: (empty(communityConfig.?maintenance.?mode) ? 'Off' : communityConfig.maintenance.mode)
-    principals: (length(maintenancePrincipals) > 0 && communityConfig.?maintenance.?mode != 'Off') ? maintenancePrincipals : []
+    mode: empty(communityConfig.?maintenance.?mode) ? 'Off' : communityConfig.maintenance.mode
+    principals: ((_maintenanceMode == 'on' || _maintenanceMode == 'advanced') && length(maintenancePrincipals) > 0) ? maintenancePrincipals : []
   },
-  (communityConfig.?maintenance.?mode == 'On' && !empty(communityConfig.?maintenance.?justification)) ? { justification: communityConfig.maintenance.justification } : {}
+  (_maintenanceMode == 'on' && !empty(communityConfig.?maintenance.?justification)) ? { justification: communityConfig.maintenance.justification } : {}
 )
 
 resource aveCommnity 'Microsoft.Mission/communities@2025-05-01-preview' = {
@@ -106,7 +117,9 @@ resource aveCommnity 'Microsoft.Mission/communities@2025-05-01-preview' = {
       addressSpace: communityConfig.addressSpace
       dnsServers: communityConfig.dnsServers
       // approvalSettings intentionally omitted (US Gov RP validation issue)
-      maintenanceModeConfiguration: communityMaintenanceMode
+  maintenanceModeConfiguration: communityMaintenanceMode
+  // Surface validation issues (non-blocking) when advanced/on guardrails not met
+  ...(_maintenanceValidationFailed ? { maintenanceValidationError: _maintenanceValidationMessage } : {})
     }, governedServiceListFragment)
 }
 

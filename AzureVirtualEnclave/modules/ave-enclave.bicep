@@ -19,15 +19,18 @@ var _normalizedNetworkSize = toLower(empty(enclaveConfig.?networkSize) ? '' : en
 var _isCustom = _normalizedNetworkSize == 'custom'
 var _needsCustomButMissing = _isCustom && empty(enclaveConfig.?customCidrRange)
 var _hasRangeButNotCustom = !_isCustom && !empty(enclaveConfig.?customCidrRange)
-var _maintenanceOnMissingJustification = (toLower(enclaveConfig.?maintenance.?mode ?? 'off') == 'on') && empty(enclaveConfig.?maintenance.?justification)
+var _maintenanceMode = toLower(enclaveConfig.?maintenance.?mode ?? 'off')
+var _maintenanceOnMissingJustification = (_maintenanceMode == 'on') && empty(enclaveConfig.?maintenance.?justification)
+var _advancedMissingPrincipals = (_maintenanceMode == 'advanced') && (length(enclaveConfig.?maintenance.?principals ?? []) == 0)
 // Validation failure message (evaluated if triggered)
-var _validationFailed = _needsCustomButMissing || _hasRangeButNotCustom || _maintenanceOnMissingJustification
+var _validationFailed = _needsCustomButMissing || _hasRangeButNotCustom || _maintenanceOnMissingJustification || _advancedMissingPrincipals
 
 // Build validation message parts safely (avoid inline complex string interpolation that ARM transpiler struggled with)
 var _validationParts = concat(
   _needsCustomButMissing ? ['customCidrRange required when networkSize==custom'] : [],
   _hasRangeButNotCustom ? ['customCidrRange must be omitted unless networkSize==custom'] : [],
-  _maintenanceOnMissingJustification ? ['maintenance.justification required when maintenance.mode==On'] : []
+  _maintenanceOnMissingJustification ? ['maintenance.justification required when maintenance.mode==On'] : [],
+  _advancedMissingPrincipals ? ['maintenance.principals required (non-empty array) when maintenance.mode==Advanced'] : []
 )
 var _validationMessage = _validationFailed ? 'Enclave configuration validation failed: ${join(_validationParts, ' | ')}' : ''
 
@@ -74,9 +77,9 @@ var maintenancePrincipals = [for p in (enclaveConfig.?maintenance.?principals ??
 var enclaveMaintenanceMode = union(
   {
     mode: (empty(enclaveConfig.?maintenance.?mode) ? 'Off' : enclaveConfig.maintenance.mode)
-    principals: (length(maintenancePrincipals) > 0 && enclaveConfig.?maintenance.?mode != 'Off') ? maintenancePrincipals : []
+    principals: ((_maintenanceMode == 'on' || _maintenanceMode == 'advanced') && length(maintenancePrincipals) > 0) ? maintenancePrincipals : []
   },
-  (enclaveConfig.?maintenance.?mode == 'On' && !empty(enclaveConfig.?maintenance.?justification)) ? { justification: enclaveConfig.maintenance.justification } : {}
+  (_maintenanceMode == 'on' && !empty(enclaveConfig.?maintenance.?justification)) ? { justification: enclaveConfig.maintenance.justification } : {}
 )
 
 // Deploy Azure Virtual Enclave using native Microsoft.Mission resource

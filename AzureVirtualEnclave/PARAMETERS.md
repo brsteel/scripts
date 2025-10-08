@@ -123,7 +123,7 @@ communityConfig: {
 | `addressSpace` | Yes | Logical CIDR boundary for enclave allocations (preview logical intent). |
 | `dnsServers` | No | Custom DNS server IPs (empty = platform default). |
 | `enclaveConfigs` | Yes | Array of enclave definition objects (can be empty when staging). |
-| `maintenance` | No | `{ mode: 'On' or 'Off', principals?:[], justification?:'' }` – justification required when `mode=='On'`. |
+| `maintenance` | No | `mode: Off/On/Advanced`, plus optional `principals`, `justification`. `On` requires justification; `Advanced` requires non-empty principals. |
 | `rbac` | No | Optional clearable overrides for role buckets (same key names as top-level minus prefix). |
 
 ## Enclave Configuration (`enclaveConfigs[]`)
@@ -137,7 +137,7 @@ communityConfig: {
 | `allowSubnetCommunication` | Yes | Boolean toggle for internal subnet east/west. |
 | `connectToAzureServices` | Yes | Boolean (platform connectivity). |
 | `diagnosticDestination` | No | Overrides `diagnosticDestinationDefault` if valid. |
-| `maintenance` | No | Same shape as on community – applied at enclave scope. |
+| `maintenance` | No | Same shape as community. `Advanced` requires non-empty principals array; `On` requires justification. |
 | `rbac` | No | Role bucket overrides (presence-based; empty array clears). |
 | `workloadConfigs` | Yes | Array of workload objects (may be empty). |
 
@@ -172,8 +172,12 @@ Deployment outputs include a summarized `rbacSummary` to aid in auditing without
 
 | Rule | Description |
 |------|-------------|
-| Justification required | When `maintenance.mode == 'On'` justification must be non-empty. |
-| Principals optional | Omit or supply an array of group object IDs permitted during maintenance. |
+| Mode | Rules |
+|------|-------|
+| `Off` | No principals or justification processed. |
+| `On` | `justification` must be non-empty if supplied; principals optional (grant limited operational access). |
+| `Advanced` | `principals` MUST be a non-empty array of Entra ID group (or PIM-eligible role) object IDs; justification optional. |
+| Principals representation | Each principal is emitted as `{ id: <objectId>, type: 'Group' }`. Use groups or PIM-enabled groups, not individual users, for lifecycle safety. |
 
 ## Deprecated / Unsupported (Historical)
 
