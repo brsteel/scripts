@@ -89,7 +89,7 @@ var maintenancePrincipals = [for p in (communityConfig.?maintenance.?principals 
 
 // Normalized maintenance mode (supports Off | On | Advanced)
 var _maintenanceMode = toLower(communityConfig.?maintenance.?mode ?? 'off')
-var _maintenanceOnMissingJustification = (_maintenanceMode == 'on') && empty(communityConfig.?maintenance.?justification)
+var _maintenanceOnMissingJustification = ((_maintenanceMode == 'on') || (_maintenanceMode == 'advanced')) && empty(communityConfig.?maintenance.?justification)
 var _advancedMissingPrincipals = (_maintenanceMode == 'advanced') && (length(communityConfig.?maintenance.?principals ?? []) == 0)
 var _maintenanceValidationFailed = _maintenanceOnMissingJustification || _advancedMissingPrincipals
 var _maintenanceValidationMessages = concat(
@@ -104,7 +104,7 @@ var communityMaintenanceMode = union(
     mode: empty(communityConfig.?maintenance.?mode) ? 'Off' : communityConfig.maintenance.mode
   principals: ((_maintenanceMode == 'on' || _maintenanceMode == 'advanced') && length(maintenancePrincipals) > 0) ? maintenancePrincipals : []
   },
-  (_maintenanceMode == 'on' && !empty(communityConfig.?maintenance.?justification)) ? { justification: communityConfig.maintenance.justification } : {}
+  (((_maintenanceMode == 'on') || (_maintenanceMode == 'advanced')) && !empty(communityConfig.?maintenance.?justification)) ? { justification: communityConfig.maintenance.justification } : {}
 )
 
 resource aveCommnity 'Microsoft.Mission/communities@2025-05-01-preview' = {

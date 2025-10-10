@@ -20,7 +20,7 @@ var _isCustom = _normalizedNetworkSize == 'custom'
 var _needsCustomButMissing = _isCustom && empty(enclaveConfig.?customCidrRange)
 var _hasRangeButNotCustom = !_isCustom && !empty(enclaveConfig.?customCidrRange)
 var _maintenanceMode = toLower(enclaveConfig.?maintenance.?mode ?? 'off')
-var _maintenanceOnMissingJustification = (_maintenanceMode == 'on') && empty(enclaveConfig.?maintenance.?justification)
+var _maintenanceOnMissingJustification = ((_maintenanceMode == 'on') || (_maintenanceMode == 'advanced')) && empty(enclaveConfig.?maintenance.?justification)
 var _advancedMissingPrincipals = (_maintenanceMode == 'advanced') && (length(enclaveConfig.?maintenance.?principals ?? []) == 0)
 // Validation failure message (evaluated if triggered)
 var _validationFailed = _needsCustomButMissing || _hasRangeButNotCustom || _maintenanceOnMissingJustification || _advancedMissingPrincipals
@@ -80,7 +80,7 @@ var enclaveMaintenanceMode = union(
     mode: (empty(enclaveConfig.?maintenance.?mode) ? 'Off' : enclaveConfig.maintenance.mode)
     principals: ((_maintenanceMode == 'on' || _maintenanceMode == 'advanced') && length(maintenancePrincipals) > 0) ? maintenancePrincipals : []
   },
-  (_maintenanceMode == 'on' && !empty(enclaveConfig.?maintenance.?justification)) ? { justification: enclaveConfig.maintenance.justification } : {}
+  (((_maintenanceMode == 'on') || (_maintenanceMode == 'advanced')) && !empty(enclaveConfig.?maintenance.?justification)) ? { justification: enclaveConfig.maintenance.justification } : {}
 )
 
 // Deploy Azure Virtual Enclave using native Microsoft.Mission resource
@@ -263,11 +263,11 @@ output workloadRbacSummary array = [for (workloadConfig, i) in enclaveConfig.wor
 output enclaveMaintenance object = {
   mode: empty(enclaveConfig.?maintenance.?mode) ? 'Off' : enclaveConfig.maintenance.mode
   principals: (length(enclaveConfig.?maintenance.?principals ?? []) > 0) ? enclaveConfig.maintenance.principals : []
-  justification: (enclaveConfig.?maintenance.?mode == 'On') ? (enclaveConfig.?maintenance.?justification ?? '') : ''
+  justification: ((toLower(enclaveConfig.?maintenance.?mode) == 'on') || (toLower(enclaveConfig.?maintenance.?mode) == 'advanced')) ? (enclaveConfig.?maintenance.?justification ?? '') : ''
 }
 // Maintenance validation (maintenance-specific issues only)
 var _maintenanceIssueParts = concat(
-  _maintenanceOnMissingJustification ? ['maintenance.justification required when maintenance.mode==On'] : [],
+  _maintenanceOnMissingJustification ? ['maintenance.justification required when maintenance.mode==On or Advanced'] : [],
   _advancedMissingPrincipals ? ['maintenance.principals required (non-empty array) when maintenance.mode==Advanced'] : []
 )
 output enclaveMaintenanceValidation object = {

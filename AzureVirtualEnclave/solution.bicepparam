@@ -29,6 +29,7 @@ param communityConfig = {
       'abd8437b-107e-4c1b-9d65-6613f079ce61' // PIM-enabled group (example)
     ]
     principalType: 'User'
+    justification: 'Advanced maintenance pilot at community scope'
   }
   enclaveConfigs: [
     // Enclave 0 remains Off (inherits none; separate test of mix)
@@ -58,6 +59,7 @@ param communityConfig = {
         mode: 'Advanced'
         principals: [ '00000000-0000-0000-0000-0000000000BB' ]
         principalType: 'User'
+        justification: 'Targeted enclave advanced maintenance validation'
       }
       workloadConfigs: [
         {
