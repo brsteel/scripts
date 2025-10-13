@@ -107,4 +107,40 @@ New-AzSubscriptionDeployment `
   -TemplateParameterFile "C:\Users\brsteel\Documents\repositories\missionlz\src\bicep\add-ons\tier3\solution.bicepparam"
 
 
+# -------------------------------------------------------------
+# Application Gateway Scenario A (WAF in front of Firewall)
+# Perform a what-if first, then (if clean) the actual create.
+# NOTE: Explicit --template-file included even though the param file
+# uses a 'using' directive; this ensures clarity and avoids CLI version quirks.
+
+# App Gateway Scenario A what-if (az CLI)
+az deployment sub what-if `
+  --name agwScenarioA-preview1 `
+  --location usgovvirginia `
+  --template-file C:\Users\brsteel\Documents\repositories\missionlz\src\add-ons\application-gateway\solution.bicep `
+  --parameters C:\Users\brsteel\Documents\repositories\Scripts\bicep\params\ApplicationGatewayScenarioA.bicepparam
+
+# App Gateway Scenario A create (az CLI)
+az deployment sub create `
+  --name agwScenarioA `
+  --location usgovvirginia `
+  --template-file C:\Users\brsteel\Documents\repositories\missionlz\src\add-ons\application-gateway\solution.bicep `
+  --parameters C:\Users\brsteel\Documents\repositories\Scripts\bicep\params\ApplicationGatewayScenarioA.bicepparam
+
+# App Gateway Scenario A what-if (PowerShell)
+New-AzSubscriptionDeployment `
+  -Name "agwScenarioA-preview1" `
+  -Location "usgovvirginia" `
+  -TemplateFile "C:\Users\brsteel\Documents\repositories\missionlz\src\add-ons\application-gateway\solution.bicep" `
+  -TemplateParameterFile "C:\Users\brsteel\Documents\repositories\Scripts\bicep\params\ApplicationGatewayScenarioA.bicepparam" `
+  -WhatIf
+
+# App Gateway Scenario A create (PowerShell)
+New-AzSubscriptionDeployment `
+  -Name "agwScenarioA" `
+  -Location "usgovvirginia" `
+  -TemplateFile "C:\Users\brsteel\Documents\repositories\missionlz\src\add-ons\application-gateway\solution.bicep" `
+  -TemplateParameterFile "C:\Users\brsteel\Documents\repositories\Scripts\bicep\params\ApplicationGatewayScenarioA.bicepparam"
+
+
 

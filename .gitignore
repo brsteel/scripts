@@ -222,3 +222,9 @@ Thumbs.db
 # Legacy Unity project directory (deleted upstream) - ignore if regenerated locally
 AzureVRPRoject/
 >>>>>>> 3726ac3 (AVE: enforce baseName length, remove helper scripts, add focused param files; repo hygiene: improved .gitignore (Unity+Unreal+Python))
+
+# ---- Local Deployment Parameter Files ----
+# Keep Bicep parameter wrapper files ( *.bicepparam ) out of version control.
+# These often contain environment-specific resource IDs and secrets.
+*.bicepparam
+bicep/paramfiles/*.bicepparam
