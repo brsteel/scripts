@@ -1,0 +1,54 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": { "value": "usgovvirginia" },
+    "hubVnetResourceId": { "value": "/subscriptions/afb59830-1fc9-44c9-bba3-04f657483578/resourceGroups/mlz-dev-va-hub-rg-network/providers/Microsoft.Network/virtualNetworks/mlz-dev-va-hub-vnet" },
+    "userAssignedIdentityResourceId": { "value": "/subscriptions/afb59830-1fc9-44c9-bba3-04f657483578/resourceGroups/mlz-dev-va-hub-rg-network/providers/Microsoft.ManagedIdentity/userAssignedIdentities/mlz-dev-va-hub-uai-appgw" },
+    "commonDefaults": {
+      "value": {
+        "backendProtocol": "Https",
+        "backendPort": 443,
+        "healthProbePath": "/healthz",
+        "listenerFrontendPort": 443,
+        "enableHttp2": true,
+        "autoscaleMinCapacity": 1,
+        "autoscaleMaxCapacity": 2,
+        "defaultCertificateSecretId": ""
+      }
+    },
+    "apps": {
+      "value": [
+        {
+          "name": "identity-backend",
+          "backendAddresses": [ { "fqdn": "mlz-dev-va-identity-appsvc.azurewebsites.us" } ],
+          "certificateSecretId": "https://kvupk5tosk6mhxq.vault.usgovcloudapi.net/secrets/identity-backend-cert/7ab14d0efe8c4fabb41829faf5f0e828",
+          "healthProbePath": "/healthz",
+          "addressPrefixes": [ "10.0.130.0/24" ]
+        },
+        {
+          "name": "operations-backend",
+          "backendAddresses": [ { "fqdn": "mlz-dev-va-operations-appsvc.azurewebsites.us" } ],
+          "certificateSecretId": "https://kvupk5tosk6mhxq.vault.usgovcloudapi.net/secrets/ops-backend-cert/e3628c3b3240460c90a5bf01ccbe9337",
+          "healthProbePath": "/healthz",
+          "addressPrefixes": [ "10.0.131.0/24" ]
+        },
+        {
+          "name": "sharedservices-backend",
+          "backendAddresses": [ { "fqdn": "mlz-dev-va-sharedservices-appsvc.azurewebsites.us" } ],
+          "certificateSecretId": "https://kvupk5tosk6mhxq.vault.usgovcloudapi.net/secrets/shared-backend-cert/e2ce2ff969d1490f8fdbeaf7d5f199f4",
+          "healthProbePath": "/healthz",
+          "addressPrefixes": [ "10.0.132.0/24" ]
+        }
+      ]
+    },
+    "tags": { "value": { "environment": "Development", "identifier": "mlz" } },
+    "enableDiagnostics": { "value": true },
+    "logAnalyticsWorkspaceResourceId": { "value": "" },
+    "createSubnetNsg": { "value": true },
+    "existingWafPolicyId": { "value": "" },
+    "backendAllowPorts": { "value": [ "443" ] },
+    "customAppGatewayFirewallRuleCollectionGroups": { "value": [] },
+    "createKeyVaultSecretAccessRole": { "value": true }
+  }
+}
