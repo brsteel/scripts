@@ -1,0 +1,15 @@
+Hello, we have been working on this aks template deployment using a private preview API called azure virtual enclaves
+Please review the code in this folder
+C:\Users\brsteel\OneDrive - Microsoft\Documents\repositories\virtual-enclaves\service-catalog\bicep\templates\privateAKSCluster, only the bicep please
+You can also review the code more broadly in the repo virtual-enclaves to get even more context.
+We are using bicepparam files located here
+C:\Users\brsteel\OneDrive - Microsoft\Documents\repositories\Scripts\bicep\paramfiles
+I am allowing you to run commands directly in the terminal to access azure and do the deployments and review the resulting configurations that are deployed to help troubleshoot
+the terminal is in posh
+When you deploy to azure, this is typically the command you run
+You can also directly look into the AVE API and get the schema context as well
+we will ignore aksCluster.bicep, as that is a legacy file
+don't document anything until I tell you to, this template is not used by anyone yet, so we won't document until we have it in working order
+
+Use this command line structure for deploying
+$ts = Get-Date -Format yyyyMMddHHmmss; az deployment sub create --name wl-aks-aksenclave-$ts --location usgovvirginia --template-file C:\Users\brsteel\Documents\repositories\virtual-enclaves\service-catalog\bicep\templates\privateAKSCluster\aksClusterWorkload.bicep --parameters C:\Users\brsteel\Documents\repositories\Scripts\bicep\paramfiles\aks-aksenclave-workload.bicepparam
