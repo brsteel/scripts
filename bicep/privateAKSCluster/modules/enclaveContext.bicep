@@ -35,32 +35,34 @@ var fallbackVirtualNetworkResourceId = contains(enclaveVirtualNetwork, 'virtualN
   ? string(enclaveVirtualNetwork.virtualNetworkResourceId)
   : ''
 
-// -- Dynamic Firewall Lookup --
-var communityResourceId = contains(enclaveProperties, 'communityResourceId') && !empty(enclaveProperties.communityResourceId)
-  ? string(enclaveProperties.communityResourceId)
-  : ''
+// -- Firewall Scope Resolution (Static Parsing) --
+// We must parse the scope from the parameter string to avoid runtime reference() dependencies for module scope.
+var communityResourceIdSegments = split(communityManagedResourceGroupResourceId, '/')
 
-// Use the parameter to determine scope for Firewall lookup
-var communityManagedRgName = split(communityManagedResourceGroupResourceId, '/')[4]
-var communitySubscriptionId = split(communityManagedResourceGroupResourceId, '/')[2]
+var communitySubscriptionId = length(communityResourceIdSegments) > 2 ? communityResourceIdSegments[2] : subscription().subscriptionId
+var communityManagedRgName = length(communityResourceIdSegments) > 4 ? communityResourceIdSegments[4] : ''
 
-var communityName = !empty(communityResourceId) ? last(split(communityResourceId, '/')) : ''
-// Assume firewall name follows convention. Location is tricky but usually same as enclosure.
-// We can try to use resourceGroup().location if calling from this module scope, OR we assume community is same region.
+// Infer Firewall Name from Community Managed RG Name Convention
+// Convention: <CommunityName>-HostedResources-<Random>
+// Firewall:   <CommunityName>-fw-<Location>
+// We try to extract Community Name by taking the part before "-HostedResources"
+var rgNameParts = split(communityManagedRgName, '-HostedResources')
+var communityNameGuess = length(rgNameParts) > 0 ? rgNameParts[0] : 'avecommunity'
+
 var derivedLocation = resourceGroup().location
-var firewallName = '${communityName}-fw-${derivedLocation}'
+var inferredFirewallName = '${communityNameGuess}-fw-${derivedLocation}'
 
-// We must use a nested module to perform the lookup because 'existing' resource needs a known scope at compile/start time.
-// Since we have the RG name from parameter now, we can set the module scope!
-module firewallLookup './firewallIpResolver.bicep' = if (!empty(communityManagedResourceGroupResourceId)) {
+// Lookup Module
+// Only runs if we have a valid target RG.
+module firewallLookup './firewallIpResolver.bicep' = if (!empty(communityManagedRgName)) {
   name: 'firewall-lookup'
   scope: resourceGroup(communitySubscriptionId, communityManagedRgName)
   params: {
-    firewallName: firewallName
+    firewallName: inferredFirewallName
   }
 }
 
-var derivedFirewallPrivateIp = !empty(communityManagedResourceGroupResourceId) ? firewallLookup.outputs.privateIp : ''
+var derivedFirewallPrivateIp = !empty(communityManagedRgName) ? firewallLookup.outputs.privateIp : ''
 
 output managedResourceGroupName string = resolvedManagedResourceGroupName
 output logAnalyticsResourceIds array = array(enclaveLogAnalyticsCollectionRaw)

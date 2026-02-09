@@ -14,10 +14,11 @@ param subnetConfigurations array = []
 var normalizedEnclaveNameSegment = toLower(replace(replace(enclaveName, '_', '-'), '--', '-'))
 var communityResourceIdSegments = split(communityResourceId, '/')
 var communityNameSegment = length(communityResourceIdSegments) > 8 ? communityResourceIdSegments[8] : normalizedEnclaveNameSegment
+var communitySubscriptionId = length(communityResourceIdSegments) > 2 ? communityResourceIdSegments[2] : subscription().subscriptionId
+var communityResourceGroupName = length(communityResourceIdSegments) > 4 ? communityResourceIdSegments[4] : resourceGroup().name
 
-resource parentCommunity 'Microsoft.Mission/communities@2024-12-01-preview' existing = {
-  name: communityNameSegment
-}
+// parentCommunity resource removed as it is now handled inside communitySideResources.bicep
+// which is scoped to the correct Resource Group.
 
 var namePrefixLength = min(length(normalizedEnclaveNameSegment), 16)
 var normalizedEndpointPrefix = namePrefixLength > 0 ? substring(normalizedEnclaveNameSegment, 0, namePrefixLength) : 'enclave'
@@ -35,13 +36,19 @@ var aksRequiredEndpointTags = union(tags, {
 var blobSuffix = environment().suffixes.storage
 var cloudMapping = {
   AzureCloud: {
+    #disable-next-line no-hardcoded-env-urls
     aks: 'azmk8s.io'
+    #disable-next-line no-hardcoded-env-urls
     management: 'management.azure.com'
+    #disable-next-line no-hardcoded-env-urls
     login: 'login.microsoftonline.com'
   }
   AzureUSGovernment: {
+    #disable-next-line no-hardcoded-env-urls
     aks: 'azmk8s.usgovcloudapi.net'
+    #disable-next-line no-hardcoded-env-urls
     management: 'management.usgovcloudapi.net'
+    #disable-next-line no-hardcoded-env-urls
     login: 'login.microsoftonline.us'
   }
 }
@@ -136,6 +143,7 @@ var defaultDefinition = {
 
 var resolvedUserDefinedDefinitions = [for (item, idx) in aksUserDefinedNetworkDefinitions: {
   endpoint: {
+    existingResourceId: contains(item, 'endpoint') && contains(item.endpoint, 'existingResourceId') ? item.endpoint.existingResourceId : ''
     name: contains(item, 'endpoint') && contains(item.endpoint, 'name') && !empty(item.endpoint.name)
       ? string(item.endpoint.name)
       : format('ce-{0}-{1}', normalizedEndpointPrefix, idx)
@@ -161,24 +169,25 @@ var resolvedUserDefinedDefinitions = [for (item, idx) in aksUserDefinedNetworkDe
 
 var allConnectivityDefinitions = enableAksRequiredConnectivity ? union([defaultDefinition], resolvedUserDefinedDefinitions) : resolvedUserDefinedDefinitions
 
-#disable-next-line BCP081
-resource communityEndpoints 'Microsoft.Mission/communities/communityEndpoints@2024-12-01-preview' = [for (item, idx) in allConnectivityDefinitions: {
-  parent: parentCommunity
-  name: item.endpoint.name
-  location: resourceGroup().location
-  tags: item.endpoint.tags
-  properties: item.endpoint.properties
-}]
+module communityEndpointsDeployment 'communitySideResources.bicep' = {
+  name: 'deploy-community-endpoints-${uniqueNameToken}'
+  scope: resourceGroup(communitySubscriptionId, communityResourceGroupName)
+  params: {
+    communityName: communityNameSegment
+    location: resourceGroup().location
+    connectivityDefinitions: allConnectivityDefinitions
+  }
+}
 
 #disable-next-line BCP081
 resource communityConnections 'Microsoft.Mission/enclaveConnections@2024-12-01-preview' = [for (item, idx) in allConnectivityDefinitions: {
   name: item.connection.name
   location: resourceGroup().location
   tags: item.connection.tags
-  properties: union(item.connection.properties, {
+  properties: {
+    communityResourceId: communityResourceId
+    sourceResourceId: enclaveResourceId
     sourceCidr: item.connection.sourceCidr
-    destinationEndpointId: contains(item.connection.properties, 'destinationEndpointId') && !empty(string(item.connection.properties.destinationEndpointId))
-      ? string(item.connection.properties.destinationEndpointId)
-      : communityEndpoints[idx].id
-  })
+    destinationEndpointId: communityEndpointsDeployment.outputs.endpointIds[idx]
+  }
 }]

@@ -39,6 +39,9 @@ param managedResourceGroupName string = ''
 @description('Resource ID of the community managed resource group meant to host the firewall')
 param communityManagedResourceGroupResourceId string
 
+@description('Resource ID of the Resource Group where Private DNS Zones should be created/linked. If empty, defaults to the AKS workload resource group.')
+param privateDnsResourceGroupId string = ''
+
 var enclaveSegments = split(enclaveResourceId, '/')
 var enclaveSubscriptionId = length(enclaveSegments) > 2 ? enclaveSegments[2] : subscription().subscriptionId
 var enclaveName = length(enclaveSegments) > 8 ? enclaveSegments[8] : ''
@@ -100,6 +103,7 @@ module aksWorkloadResources './modules/aksWorkloadResources.bicep' = {
     keyVaultDefinition: keyVaultDefinition
     storageDefinition: storageDefinition
     managedResourceGroupName: resolvedManagedResourceGroupName
+    privateDnsResourceGroupId: privateDnsResourceGroupId
   }
   dependsOn: [
     workloadResourceGroup

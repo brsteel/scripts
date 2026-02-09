@@ -47,14 +47,17 @@ az deployment sub create \
 ### Sample Parameter File (`combined.bicepparam`)
 
 ```bicep
-using 'templates/privateAKSCluster/combineEnclaveAndAksCluster.bicep'
+using '../combineEnclaveAndAksCluster.bicep'
 
 // --------------------------------------------------------------------------------
 // ENCLAVE CONFIGURATION
 // --------------------------------------------------------------------------------
+// NEW RESOURCE GROUP: The name of the resource group to create for the Enclave
 param aveResourceGroupName = 'rg-aks-enclave-demo'
 param location = 'usgovvirginia'
 param enclaveName = 'enclave-aks-demo'
+
+// EXISTING COMMUNITY: The Resource ID of the Mission Community to join
 param communityResourceId = '/subscriptions/<sub-id>/resourceGroups/<rg-name>/providers/Microsoft.Mission/communities/<community-name>'
 // Must fit strictly within the Community Address Space
 param customCidrRange = '10.20.0.0/20'
@@ -89,7 +92,7 @@ param diagnosticDestination = 'EnclaveOnly'
 param enclaveRoleAssignments = [
   {
     // Contributor Role Definition ID (b24988ac-6180-42a0-ab88-20f7382dd24c)
-    // See "Finding Role Definition IDs" below for other roles
+    // See "Finding Role Definition IDs" in the README for other roles
     roleDefinitionId: 'b24988ac-6180-42a0-ab88-20f7382dd24c'
     principals: [
       {
@@ -569,3 +572,75 @@ To enforce **Strict mTLS** (Zero Trust) across the mesh, you must apply a `PeerA
     ```bash
     kubectl apply -f strict-mtls.yaml
     ```
+
+### Advanced Networking: Custom Community Connections
+
+You can define additional connections to the Mission Community using the `aksUserDefinedNetworkDefinitions` parameter. This is useful for connecting to shared services or existing endpoints.
+
+#### Creating a New Endpoint and Connection
+```bicep
+param aksUserDefinedNetworkDefinitions = [
+  {
+    endpoint: {
+      name: 'ce-custom-service'
+      properties: {
+        ruleCollection: [
+          {
+            name: 'allow-service-api'
+            protocols: ['TCP']
+            port: '8443'
+            destination: 'api.shared-service.local'
+            destinationType: 'FQDN'
+          }
+        ]
+      }
+    }
+    connection: {
+      name: 'ec-custom-service'
+      // Define which subnets can access this endpoint
+      subnetNames: ['aks-user']
+    }
+  }
+]
+```
+
+#### Connecting to an Existing Endpoint
+If the Community Endpoint already exists (e.g., created by another enclave or shared infrastructure), you can reference it by ID instead of defining it.
+
+```bicep
+param aksUserDefinedNetworkDefinitions = [
+  {
+    endpoint: {
+      // Provide the Resource ID of the EXISTING Community Endpoint
+      existingResourceId: '/subscriptions/<sub-id>/resourceGroups/<rg-name>/providers/Microsoft.Mission/communities/<community>/communityEndpoints/ce-shared-db'
+    }
+    connection: {
+      name: 'ec-connect-to-shared-db'
+      subnetNames: ['aks-user']
+    }
+  }
+]
+```
+
+---
+
+## Parameter Reference
+
+This table details the key parameters for `combineEnclaveAndAksCluster.bicep`.
+
+| Parameter | Type | Required? | Default | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `aveResourceGroupName` | string | **Yes** | - | Name of the Resource Group to create for the Enclave. |
+| `enclaveName` | string | **Yes** | - | Name of the Virtual Enclave resource (e.g., `enclave-01`). |
+| `workloadName` | string | **Yes** | - | Name of the Workload to create (e.g., `aks-cluster-01`). |
+| `communityResourceId` | string | **Yes** | - | Resource ID of the Mission Community this enclave joins. |
+| `communityManagedResourceGroupResourceId`| string | **Yes** | - | Resource ID of the Resource Group managed by the Community (contains the Firewall). |
+| `customCidrRange` | string | **Yes** | - | The CIDR block for the Enclave VNet (must fit in Community space). |
+| `diagnosticDestination` | string | **Yes** | - | Where to send Enclave logs: `'CommunityOnly'`, `'EnclaveOnly'`, or `'Both'`. |
+| `subnetDefinitions` | array | **Yes** | - | List of subnets to create. Must include subnets for System/User nodes and Private Endpoints. |
+| `allowSubnetCommunication`| bool | No | `false` | **Important**: Set to `true` to allow NSG traffic between subnets (required for basic AKS DNS/NTP function). |
+| `aksNetworkOverlay` | string | No | `'flatLegacy'`| Networking mode: `'flatLegacy'`, `'azureCniPodSubnet'`, or `'azureCniOverlay'`. |
+| `enableBastion` | bool | No | `false` | Deploys Azure Bastion in the Enclave VNet if set to true. |
+| `targetSubscriptionId` | string | No | *(Current)* | Subscription ID for the Workload resources (defaults to deployment subscription). |
+| `aksDefinition` | object | No | `{}` | Advanced overrides for AKS cluster settings (node pools, add-ons). |
+| `aksUserDefinedNetworkDefinitions` | array | No | `[]` | List of custom endpoints/connections. Supports creating new or linking to existing endpoints. |

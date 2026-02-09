@@ -28,6 +28,10 @@ param managedResourceGroupName string = ''
 @description('Resource ID of the community managed resource group meant to host the firewall')
 param communityManagedResourceGroupResourceId string
 
+@description('Optional Resource ID of the Resource Group where Private DNS Zones will be created/linked. If empty, defaults to the AKS Workload Resource Group.')
+param privateDnsResourceGroupId string = ''
+
+
 var enclaveName = last(split(enclaveResourceId, '/'))
 
 var aksConfig = union({
@@ -176,7 +180,8 @@ module enclaveContext './enclaveContext.bicep' = {
   params: {
     enclaveResourceId: enclaveResourceId
     managedResourceGroupName: managedResourceGroupName
-    communityManagedResourceGroupResourceId: communityManagedResourceGroupResourceId
+    // Only pass this if we intend to use the firewall (UDR mode). Passing empty string skips the lookup.
+    communityManagedResourceGroupResourceId: aksConfig.outboundType == 'userDefinedRouting' ? communityManagedResourceGroupResourceId : ''
   }
 }
 
@@ -584,61 +589,35 @@ resource workloadLogAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-
   }
 }
 
-// Future enhancement: allow referencing a shared/private DNS resource group instead of deploying locally.
-resource keyVaultPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
-  name: resolvedKeyVaultPrivateDnsZoneName
-  location: 'global'
-  tags: tags
-}
+// --------------------------------------------------------------------------------
+// PRIVATE DNS CONFIGURATION
+// --------------------------------------------------------------------------------
 
-// Future enhancement: allow referencing shared DNS RG similar to Key Vault for centralized storage zones.
-resource storagePrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
-  name: resolvedStoragePrivateDnsZoneName
-  location: 'global'
-  tags: tags
-}
+var dnsTargetSubscriptionId = !empty(privateDnsResourceGroupId) ? split(privateDnsResourceGroupId, '/')[2] : subscription().subscriptionId
+var dnsTargetResourceGroupName = !empty(privateDnsResourceGroupId) ? split(privateDnsResourceGroupId, '/')[4] : resourceGroup().name
 
-resource keyVaultDnsLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
-  parent: keyVaultPrivateDnsZone
-  name: 'link-${uniqueString(workloadName, resolvedKeyVaultPrivateDnsZoneName)}'
-  location: 'global'
-  properties: {
-    virtualNetwork: {
-      id: virtualNetworkResourceId
-    }
-    registrationEnabled: false
+var allDnsZoneNames = union([
+  resolvedKeyVaultPrivateDnsZoneName
+  resolvedStoragePrivateDnsZoneName
+], additionalDnsZones)
+
+module privateDnsManager './privateDnsManagement.bicep' = {
+  name: 'private-dns-manager-${uniqueString(workloadName)}'
+  scope: resourceGroup(dnsTargetSubscriptionId, dnsTargetResourceGroupName)
+  params: {
+    dnsZoneNames: allDnsZoneNames
+    vnetResourceId: virtualNetworkResourceId
+    tags: tags
   }
 }
 
-resource storageDnsLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
-  parent: storagePrivateDnsZone
-  name: 'link-${uniqueString(workloadName, resolvedStoragePrivateDnsZoneName)}'
-  location: 'global'
-  properties: {
-    virtualNetwork: {
-      id: virtualNetworkResourceId
-    }
-    registrationEnabled: false
-  }
-}
+// Helper to lookup ID from module output
+var keyVaultZoneId = filter(privateDnsManager.outputs.dnsZoneResourceIds, (z) => z.name == resolvedKeyVaultPrivateDnsZoneName)[0].id
+var storageZoneId = filter(privateDnsManager.outputs.dnsZoneResourceIds, (z) => z.name == resolvedStoragePrivateDnsZoneName)[0].id
 
-resource additionalPrivateDnsZones 'Microsoft.Network/privateDnsZones@2020-06-01' = [for zoneName in additionalDnsZones: {
-  name: zoneName
-  location: 'global'
-  tags: tags
-}]
-
-resource additionalPrivateDnsZoneLinks 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = [for (zoneName, i) in additionalDnsZones: {
-  parent: additionalPrivateDnsZones[i]
-  name: 'link-${uniqueString(workloadName, zoneName)}'
-  location: 'global'
-  properties: {
-    virtualNetwork: {
-      id: virtualNetworkResourceId
-    }
-    registrationEnabled: false
-  }
-}]
+// --------------------------------------------------------------------------------
+// PRIVATE ENDPOINTS
+// --------------------------------------------------------------------------------
 
 resource keyVaultPrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-09-01' = if (!empty(keyVaultPrivateEndpointSubnetName)) {
   name: 'kv-pe-${uniqueString(resolvedKeyVaultName, workloadName)}'
@@ -670,7 +649,7 @@ resource keyVaultPrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/private
       {
         name: resolvedKeyVaultPrivateDnsZoneName
         properties: {
-          privateDnsZoneId: keyVaultPrivateDnsZone.id
+          privateDnsZoneId: keyVaultZoneId
         }
       }
     ]
@@ -707,7 +686,7 @@ resource storagePrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateD
       {
         name: resolvedStoragePrivateDnsZoneName
         properties: {
-          privateDnsZoneId: storagePrivateDnsZone.id
+          privateDnsZoneId: storageZoneId
         }
       }
     ]

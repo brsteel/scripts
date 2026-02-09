@@ -4,7 +4,7 @@ targetScope = 'subscription'
 // ENCLAVE PARAMETERS
 // --------------------------------------------------------------------------------
 
-@description('Size of the enclave base VNet CIDR (e.g. /20).')
+@description('Name of the resource group to create for the Enclave.')
 param aveResourceGroupName string
 
 @description('Location for the enclave resource group and resources.')
@@ -106,6 +106,9 @@ param managedResourceGroupName string = ''
 @description('Resource ID of the community managed resource group meant to host the firewall')
 param communityManagedResourceGroupResourceId string
 
+@description('Resource ID of the Resource Group where Private DNS Zones should be created/linked. If empty, defaults to the AKS workload resource group.')
+param privateDnsResourceGroupId string = ''
+
 // --------------------------------------------------------------------------------
 // MODULES
 // --------------------------------------------------------------------------------
@@ -154,6 +157,7 @@ module workloadDeployment 'aksClusterWorkload.bicep' = {
     keyVaultDefinition: keyVaultDefinition
     storageDefinition: storageDefinition
     managedResourceGroupName: managedResourceGroupName
+    privateDnsResourceGroupId: privateDnsResourceGroupId
   }
 }
 
