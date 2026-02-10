@@ -111,7 +111,8 @@ var aksConnectivitySourceCidr = !empty(aksRequiredSourceSubnetNames)
   : (empty(aksRequiredSourceCidrs) ? customCidrRange : aksRequiredSourceCidrs)
 
 var aksRequiredEndpointDefinitionOverrides = empty(aksRequiredEndpointDefinition) ? {} : aksRequiredEndpointDefinition
-var resolvedAksRequiredEndpointName = contains(aksRequiredEndpointDefinitionOverrides, 'name') && !empty(aksRequiredEndpointDefinitionOverrides.name) ? string(aksRequiredEndpointDefinitionOverrides.name) : aksRequiredEndpointName
+var existingAksRequiredEndpointResourceId = contains(aksRequiredEndpointDefinitionOverrides, 'existingResourceId') && !empty(aksRequiredEndpointDefinitionOverrides.existingResourceId) ? aksRequiredEndpointDefinitionOverrides.existingResourceId : ''
+var resolvedAksRequiredEndpointName = contains(aksRequiredEndpointDefinitionOverrides, 'aksCommunityEndpointName') && !empty(aksRequiredEndpointDefinitionOverrides.aksCommunityEndpointName) ? string(aksRequiredEndpointDefinitionOverrides.aksCommunityEndpointName) : aksRequiredEndpointName
 var customAksRequiredEndpointTags = contains(aksRequiredEndpointDefinitionOverrides, 'tags') && !empty(aksRequiredEndpointDefinitionOverrides.tags) ? aksRequiredEndpointDefinitionOverrides.tags : {}
 var resolvedAksRequiredEndpointTags = union(aksRequiredEndpointTags, customAksRequiredEndpointTags)
 var defaultAksRequiredEndpointProperties = {
@@ -121,11 +122,12 @@ var customAksRequiredEndpointProperties = contains(aksRequiredEndpointDefinition
 var resolvedAksRequiredEndpointProperties = union(defaultAksRequiredEndpointProperties, customAksRequiredEndpointProperties)
 
 var aksRequiredConnectionDefinitionOverrides = empty(aksRequiredConnectionDefinition) ? {} : aksRequiredConnectionDefinition
-var resolvedAksRequiredConnectionName = contains(aksRequiredConnectionDefinitionOverrides, 'name') && !empty(aksRequiredConnectionDefinitionOverrides.name) ? string(aksRequiredConnectionDefinitionOverrides.name) : aksRequiredConnectionName
+var resolvedAksRequiredConnectionName = contains(aksRequiredConnectionDefinitionOverrides, 'aksEnclaveConnectionName') && !empty(aksRequiredConnectionDefinitionOverrides.aksEnclaveConnectionName) ? string(aksRequiredConnectionDefinitionOverrides.aksEnclaveConnectionName) : aksRequiredConnectionName
 var customAksRequiredConnectionTags = contains(aksRequiredConnectionDefinitionOverrides, 'tags') && !empty(aksRequiredConnectionDefinitionOverrides.tags) ? aksRequiredConnectionDefinitionOverrides.tags : {}
 var resolvedAksRequiredConnectionTags = union(aksRequiredEndpointTags, customAksRequiredConnectionTags)
 var defaultDefinition = {
   endpoint: {
+    existingResourceId: existingAksRequiredEndpointResourceId
     name: resolvedAksRequiredEndpointName
     tags: resolvedAksRequiredEndpointTags
     properties: resolvedAksRequiredEndpointProperties

@@ -64,7 +64,7 @@ resource workloadResourceGroup 'Microsoft.Resources/resourceGroups@2022-09-01' =
   tags: tags
 }
 
-module aveWorkloadModule './modules/aveWorkload.bicep' = {
+module aveWorkloadModule 'aveWorkload.bicep' = {
   name: 'workload-${uniqueString(workloadName)}'
   scope: resourceGroup(enclaveSubscriptionId, enclaveResourceGroupName)
   params: {
@@ -90,7 +90,7 @@ var computedNetworkConfig = aksNetworkOverlay == 'azureCniOverlay' ? {
 
 var resolvedAksDefinition = union(computedNetworkConfig, aksDefinition)
 
-module aksWorkloadResources './modules/aksWorkloadResources.bicep' = {
+module aksWorkloadResources 'aksWorkloadResources.bicep' = {
   name: 'aks-resources-${uniqueString(workloadName)}'
   scope: resourceGroup(targetSubscriptionId, aksResourceGroupName)
   params: {

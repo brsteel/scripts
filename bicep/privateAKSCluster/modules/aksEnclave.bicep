@@ -64,7 +64,7 @@ resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
   tags: tags
 }
 
-module enclaveInfra 'modules/enclaveResources.bicep' = {
+module enclaveInfra 'enclaveResources.bicep' = {
   name: 'enclave-infra-${uniqueString(enclaveName)}'
   scope: rg
   params: {
@@ -84,7 +84,7 @@ module enclaveInfra 'modules/enclaveResources.bicep' = {
   }
 }
 
-module aksConnection 'modules/aksEnclaveConnection.bicep' = if (enableAksRequiredConnectivity) {
+module aksConnection 'aksEnclaveConnection.bicep' = if (enableAksRequiredConnectivity) {
   name: 'enclave-connection-${uniqueString(enclaveName)}'
   scope: rg
   params: {

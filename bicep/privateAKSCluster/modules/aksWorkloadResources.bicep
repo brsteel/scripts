@@ -207,6 +207,26 @@ var constructedVnetId = '/subscriptions/${split(enclaveResourceId, '/')[2]}/reso
 var virtualNetworkResourceId = constructedVnetId
 var resolvedFirewallPrivateIp = string(enclaveContext.outputs.firewallPrivateIp)
 
+// Route Table is now created in the Workload RG (this file's scope)
+resource aksRouteTable 'Microsoft.Network/routeTables@2023-09-01' = if (aksConfig.outboundType == 'userDefinedRouting') {
+  name: 'rt-aks-egress'
+  location: location
+  tags: tags
+  properties: {
+    disableBgpRoutePropagation: false
+    routes: [
+      {
+        name: 'default-route-to-firewall'
+        properties: {
+          addressPrefix: '0.0.0.0/0'
+          nextHopType: 'VirtualAppliance'
+          nextHopIpAddress: resolvedFirewallPrivateIp
+        }
+      }
+    ]
+  }
+}
+
 // Only deploy the Egress Route Table if the AKS cluster is configured for User Defined Routing
 // If outboundType is 'loadBalancer' or 'managedNATGateway', we should NOT force traffic to the firewall.
 module aksNetworkConfig './aksNetworkConfig.bicep' = if (!empty(managedResourceGroupName) && aksConfig.outboundType == 'userDefinedRouting') {
@@ -217,7 +237,7 @@ module aksNetworkConfig './aksNetworkConfig.bicep' = if (!empty(managedResourceG
     tags: tags
     vnetName: '${enclaveName}-vnet'
     subnetNames: uniqueNodePoolSubnetsWithRouteTable
-    firewallPrivateIp: resolvedFirewallPrivateIp
+    routeTableId: aksRouteTable.id
   }
 }
 
