@@ -1,0 +1,363 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+  "languageVersion": "2.0",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.39.26.7824",
+      "templateHash": "7317654569471402182"
+    }
+  },
+  "parameters": {
+    "targetSubscriptionId": {
+      "type": "string",
+      "metadata": {
+        "description": "Target subscription ID containing the managed resource group."
+      }
+    },
+    "managedResourceGroupName": {
+      "type": "string",
+      "metadata": {
+        "description": "Managed resource group name created by AVE for the enclave."
+      }
+    },
+    "enclaveName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the enclave. Used to resolve enclave VNet by convention."
+      }
+    },
+    "location": {
+      "type": "string",
+      "metadata": {
+        "description": "Deployment location for route table resources."
+      }
+    },
+    "egressRouteTableName": {
+      "type": "string",
+      "defaultValue": "rt-aks-egress",
+      "metadata": {
+        "description": "Route table name to create for egress."
+      }
+    },
+    "egressSubnetNames": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "Subnet names to associate to the egress route table."
+      }
+    },
+    "allowedSubnetCommunications": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "Subnet communication rule definitions."
+      }
+    },
+    "ruleNamePrefix": {
+      "type": "string",
+      "defaultValue": "allow-subnet",
+      "metadata": {
+        "description": "Prefix for generated NSG rule names."
+      }
+    },
+    "priorityStart": {
+      "type": "int",
+      "defaultValue": 3000,
+      "metadata": {
+        "description": "Starting priority for generated NSG rules when not explicitly provided."
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {},
+      "metadata": {
+        "description": "Tags for created resources."
+      }
+    }
+  },
+  "resources": {
+    "egressRouteTableAssociation": {
+      "condition": "[greater(length(parameters('egressSubnetNames')), 0)]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "[format('egressRouteTableAssociation-{0}', uniqueString('egressRouteTableAssociation', deployment().name))]",
+      "subscriptionId": "[parameters('targetSubscriptionId')]",
+      "resourceGroup": "[parameters('managedResourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "enclaveName": {
+            "value": "[parameters('enclaveName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "routeTableName": {
+            "value": "[parameters('egressRouteTableName')]"
+          },
+          "subnetNames": {
+            "value": "[parameters('egressSubnetNames')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "7358595824275200733"
+            }
+          },
+          "parameters": {
+            "enclaveName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the enclave. Used to find the enclave VNet by convention."
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for route table resources."
+              }
+            },
+            "routeTableName": {
+              "type": "string",
+              "defaultValue": "rt-aks-egress",
+              "metadata": {
+                "description": "Route table name to create and associate to egress subnets."
+              }
+            },
+            "subnetNames": {
+              "type": "array",
+              "metadata": {
+                "description": "List of enclave subnet names that should be associated to the egress route table."
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Tags applied to the egress route table."
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/routeTables",
+              "apiVersion": "2023-09-01",
+              "name": "[parameters('routeTableName')]",
+              "location": "[parameters('location')]",
+              "tags": "[union(parameters('tags'), createObject('mission-component', 'aks-egress-route-table'))]",
+              "properties": {
+                "disableBgpRoutePropagation": false,
+                "routes": []
+              }
+            },
+            {
+              "copy": {
+                "name": "subnetUpdates",
+                "count": "[length(parameters('subnetNames'))]"
+              },
+              "type": "Microsoft.Network/virtualNetworks/subnets",
+              "apiVersion": "2023-09-01",
+              "name": "[format('{0}/{1}', format('{0}-vnet', parameters('enclaveName')), parameters('subnetNames')[copyIndex()])]",
+              "properties": {
+                "addressPrefix": "[filter(reference(resourceId('Microsoft.Network/virtualNetworks', format('{0}-vnet', parameters('enclaveName'))), '2023-09-01').subnets, lambda('s', equals(lambdaVariables('s').name, parameters('subnetNames')[copyIndex()])))[0].properties.addressPrefix]",
+                "routeTable": {
+                  "id": "[resourceId('Microsoft.Network/routeTables', parameters('routeTableName'))]"
+                },
+                "delegations": "[filter(reference(resourceId('Microsoft.Network/virtualNetworks', format('{0}-vnet', parameters('enclaveName'))), '2023-09-01').subnets, lambda('s', equals(lambdaVariables('s').name, parameters('subnetNames')[copyIndex()])))[0].properties.delegations]",
+                "networkSecurityGroup": "[filter(reference(resourceId('Microsoft.Network/virtualNetworks', format('{0}-vnet', parameters('enclaveName'))), '2023-09-01').subnets, lambda('s', equals(lambdaVariables('s').name, parameters('subnetNames')[copyIndex()])))[0].properties.networkSecurityGroup]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/routeTables', parameters('routeTableName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "routeTableId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Network/routeTables', parameters('routeTableName'))]"
+            }
+          }
+        }
+      }
+    },
+    "subnetCommunicationRules": {
+      "condition": "[greater(length(parameters('allowedSubnetCommunications')), 0)]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "[format('subnetCommunicationRules-{0}', uniqueString('subnetCommunicationRules', deployment().name))]",
+      "subscriptionId": "[parameters('targetSubscriptionId')]",
+      "resourceGroup": "[parameters('managedResourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "enclaveName": {
+            "value": "[parameters('enclaveName')]"
+          },
+          "allowedSubnetCommunications": {
+            "value": "[parameters('allowedSubnetCommunications')]"
+          },
+          "ruleNamePrefix": {
+            "value": "[parameters('ruleNamePrefix')]"
+          },
+          "priorityStart": {
+            "value": "[parameters('priorityStart')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.39.26.7824",
+              "templateHash": "11537662730596682822"
+            }
+          },
+          "parameters": {
+            "enclaveName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the enclave used to resolve the managed VNet name by convention (<enclaveName>-vnet)."
+              }
+            },
+            "allowedSubnetCommunications": {
+              "type": "array",
+              "metadata": {
+                "description": "Subnet communication rule definitions. Each object: { sourceSubnetName, destinationSubnetName, direction?, protocol?, sourcePortRange?, destinationPortRange?, priority? }. Direction supports inbound|outbound|both (default)."
+              }
+            },
+            "ruleNamePrefix": {
+              "type": "string",
+              "defaultValue": "allow-subnet",
+              "metadata": {
+                "description": "Prefix for generated NSG rule names."
+              }
+            },
+            "priorityStart": {
+              "type": "int",
+              "defaultValue": 3000,
+              "metadata": {
+                "description": "Starting priority for generated NSG rules when not explicitly provided."
+              }
+            }
+          },
+          "variables": {
+            "copy": [
+              {
+                "name": "normalizedRules",
+                "count": "[length(parameters('allowedSubnetCommunications'))]",
+                "input": {
+                  "sourceSubnetName": "[if(contains(parameters('allowedSubnetCommunications')[copyIndex('normalizedRules')], 'sourceSubnetName'), string(parameters('allowedSubnetCommunications')[copyIndex('normalizedRules')].sourceSubnetName), '')]",
+                  "destinationSubnetName": "[if(contains(parameters('allowedSubnetCommunications')[copyIndex('normalizedRules')], 'destinationSubnetName'), string(parameters('allowedSubnetCommunications')[copyIndex('normalizedRules')].destinationSubnetName), '')]",
+                  "sourceNsgName": "[if(contains(parameters('allowedSubnetCommunications')[copyIndex('normalizedRules')], 'sourceNsgName'), string(parameters('allowedSubnetCommunications')[copyIndex('normalizedRules')].sourceNsgName), '')]",
+                  "destinationNsgName": "[if(contains(parameters('allowedSubnetCommunications')[copyIndex('normalizedRules')], 'destinationNsgName'), string(parameters('allowedSubnetCommunications')[copyIndex('normalizedRules')].destinationNsgName), '')]",
+                  "sourceSubnetPrefix": "[if(contains(parameters('allowedSubnetCommunications')[copyIndex('normalizedRules')], 'sourceSubnetPrefix'), string(parameters('allowedSubnetCommunications')[copyIndex('normalizedRules')].sourceSubnetPrefix), '')]",
+                  "destinationSubnetPrefix": "[if(contains(parameters('allowedSubnetCommunications')[copyIndex('normalizedRules')], 'destinationSubnetPrefix'), string(parameters('allowedSubnetCommunications')[copyIndex('normalizedRules')].destinationSubnetPrefix), '')]",
+                  "direction": "[if(contains(parameters('allowedSubnetCommunications')[copyIndex('normalizedRules')], 'direction'), toLower(string(parameters('allowedSubnetCommunications')[copyIndex('normalizedRules')].direction)), 'both')]",
+                  "protocol": "[if(contains(parameters('allowedSubnetCommunications')[copyIndex('normalizedRules')], 'protocol'), string(parameters('allowedSubnetCommunications')[copyIndex('normalizedRules')].protocol), '*')]",
+                  "sourcePortRange": "[if(contains(parameters('allowedSubnetCommunications')[copyIndex('normalizedRules')], 'sourcePortRange'), string(parameters('allowedSubnetCommunications')[copyIndex('normalizedRules')].sourcePortRange), '*')]",
+                  "destinationPortRange": "[if(contains(parameters('allowedSubnetCommunications')[copyIndex('normalizedRules')], 'destinationPortRange'), string(parameters('allowedSubnetCommunications')[copyIndex('normalizedRules')].destinationPortRange), '*')]",
+                  "priority": "[if(contains(parameters('allowedSubnetCommunications')[copyIndex('normalizedRules')], 'priority'), int(parameters('allowedSubnetCommunications')[copyIndex('normalizedRules')].priority), add(parameters('priorityStart'), mul(copyIndex('normalizedRules'), 10)))]"
+                }
+              },
+              {
+                "name": "sourceNsgNames",
+                "count": "[length(variables('normalizedRules'))]",
+                "input": "[variables('normalizedRules')[copyIndex('sourceNsgNames')].sourceNsgName]"
+              },
+              {
+                "name": "destinationNsgNames",
+                "count": "[length(variables('normalizedRules'))]",
+                "input": "[variables('normalizedRules')[copyIndex('destinationNsgNames')].destinationNsgName]"
+              },
+              {
+                "name": "sourceSubnetPrefixes",
+                "count": "[length(variables('normalizedRules'))]",
+                "input": "[variables('normalizedRules')[copyIndex('sourceSubnetPrefixes')].sourceSubnetPrefix]"
+              },
+              {
+                "name": "destinationSubnetPrefixes",
+                "count": "[length(variables('normalizedRules'))]",
+                "input": "[variables('normalizedRules')[copyIndex('destinationSubnetPrefixes')].destinationSubnetPrefix]"
+              }
+            ]
+          },
+          "resources": [
+            {
+              "copy": {
+                "name": "outboundRules",
+                "count": "[length(variables('normalizedRules'))]"
+              },
+              "condition": "[or(equals(variables('normalizedRules')[copyIndex()].direction, 'both'), equals(variables('normalizedRules')[copyIndex()].direction, 'outbound'))]",
+              "type": "Microsoft.Network/networkSecurityGroups/securityRules",
+              "apiVersion": "2023-09-01",
+              "name": "[format('{0}/{1}', variables('sourceNsgNames')[copyIndex()], substring(format('{0}-out-{1}', parameters('ruleNamePrefix'), copyIndex()), 0, min(length(format('{0}-out-{1}', parameters('ruleNamePrefix'), copyIndex())), 80)))]",
+              "properties": {
+                "protocol": "[variables('normalizedRules')[copyIndex()].protocol]",
+                "sourcePortRange": "[variables('normalizedRules')[copyIndex()].sourcePortRange]",
+                "destinationPortRange": "[variables('normalizedRules')[copyIndex()].destinationPortRange]",
+                "sourceAddressPrefix": "[variables('sourceSubnetPrefixes')[copyIndex()]]",
+                "destinationAddressPrefix": "[variables('destinationSubnetPrefixes')[copyIndex()]]",
+                "access": "Allow",
+                "priority": "[variables('normalizedRules')[copyIndex()].priority]",
+                "direction": "Outbound"
+              }
+            },
+            {
+              "copy": {
+                "name": "inboundRules",
+                "count": "[length(variables('normalizedRules'))]"
+              },
+              "condition": "[or(equals(variables('normalizedRules')[copyIndex()].direction, 'both'), equals(variables('normalizedRules')[copyIndex()].direction, 'inbound'))]",
+              "type": "Microsoft.Network/networkSecurityGroups/securityRules",
+              "apiVersion": "2023-09-01",
+              "name": "[format('{0}/{1}', variables('destinationNsgNames')[copyIndex()], substring(format('{0}-in-{1}', parameters('ruleNamePrefix'), copyIndex()), 0, min(length(format('{0}-in-{1}', parameters('ruleNamePrefix'), copyIndex())), 80)))]",
+              "properties": {
+                "protocol": "[variables('normalizedRules')[copyIndex()].protocol]",
+                "sourcePortRange": "[variables('normalizedRules')[copyIndex()].sourcePortRange]",
+                "destinationPortRange": "[variables('normalizedRules')[copyIndex()].destinationPortRange]",
+                "sourceAddressPrefix": "[variables('sourceSubnetPrefixes')[copyIndex()]]",
+                "destinationAddressPrefix": "[variables('destinationSubnetPrefixes')[copyIndex()]]",
+                "access": "Allow",
+                "priority": "[if(equals(variables('normalizedRules')[copyIndex()].direction, 'both'), add(variables('normalizedRules')[copyIndex()].priority, 1), variables('normalizedRules')[copyIndex()].priority)]",
+                "direction": "Inbound"
+              }
+            }
+          ],
+          "outputs": {
+            "rulesApplied": {
+              "type": "int",
+              "value": "[length(variables('normalizedRules'))]"
+            }
+          }
+        }
+      }
+    }
+  },
+  "outputs": {
+    "routeTableId": {
+      "type": "string",
+      "value": "[if(greater(length(parameters('egressSubnetNames')), 0), reference('egressRouteTableAssociation').outputs.routeTableId.value, '')]"
+    },
+    "subnetCommunicationRulesApplied": {
+      "type": "int",
+      "value": "[if(greater(length(parameters('allowedSubnetCommunications')), 0), reference('subnetCommunicationRules').outputs.rulesApplied.value, 0)]"
+    }
+  }
+}
