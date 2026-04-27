@@ -12,4 +12,4 @@ we will ignore aksCluster.bicep, as that is a legacy file
 don't document anything until I tell you to, this template is not used by anyone yet, so we won't document until we have it in working order
 
 Use this command line structure for deploying
-$ts = Get-Date -Format yyyyMMddHHmmss; az deployment sub create --name wl-aks-aksenclave-$ts --location usgovvirginia --template-file C:\Users\brsteel\Documents\repositories\virtual-enclaves\service-catalog\bicep\templates\privateAKSCluster\aksClusterWorkload.bicep --parameters C:\Users\brsteel\Documents\repositories\Scripts\bicep\paramfiles\aks-aksenclave-workload.bicepparam
+$ts = Get-Date -Format yyyyMMddHHmmss; az deployment sub create --name wl-aks-aksenclave-$ts --location usgovvirginia --template-file C:\repositories\virtual-enclaves\service-catalog\bicep\templates\privateAKSCluster\aksClusterWorkload.bicep --parameters C:\repositories\Scripts\bicep\paramfiles\aks-aksenclave-workload.bicepparam

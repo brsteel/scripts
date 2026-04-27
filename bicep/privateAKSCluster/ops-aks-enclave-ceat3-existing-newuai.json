@@ -1,0 +1,57 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "deploymentContext": {
+      "value": {
+        "subscriptionId": "92073b29-cf3d-432d-ad30-21044040ed08",
+        "location": "usgovarizona",
+        "tags": {
+          "Environment": "Dev",
+          "Project": "PrivateAKS-v2",
+          "Owner": "brsteel"
+        }
+      }
+    },
+    "enclaveConfiguration": {
+      "value": {
+        "existingEnclaveResourceId": "/subscriptions/92073b29-cf3d-432d-ad30-21044040ed08/resourceGroups/ceat3/providers/Microsoft.Mission/virtualEnclaves/ceat3",
+        "resourceGroupName": "ceat3",
+        "name": "ceat3",
+        "communityResourceId": "/subscriptions/47ab8099-6a64-4074-a3b8-b3a4fab2f798/resourceGroups/plx-96/providers/Microsoft.Mission/communities/plx-96",
+        "maintenanceMode": "Advanced",
+        "enclaveRoleAssignments": [],
+        "workloadRoleAssignments": []
+      }
+    },
+    "connectivityConfiguration": {
+      "value": {
+        "enableAksRequiredConnectivity": true,
+        "aksRequiredSourceCidrs": "10.96.100.128/25"
+      }
+    },
+    "aksFoundationConfiguration": {
+      "value": {
+        "aksControlPlaneIdentity": {
+          "resourceGroupName": "ceat3-aks-workload",
+          "name": "uai-aks-ceat3-cp"
+        },
+        "futureWorkloadResourceGroupName": "ceat3-aks-workload",
+        "workloadFoundationResources": {
+          "enabled": true,
+          "resourceGroupName": "ceat3-aks-workload",
+          "resourceNames": {
+            "keyVaultName": "ceat3akskvcp02",
+            "keyName": "aks-kms",
+            "diskEncryptionSetName": "ceat3-aks-des-cp02"
+          }
+        },
+        "workloadRegistration": {
+          "workloadName": "core",
+          "resourceGroupName": "ceat3-aks-workload"
+        },
+        "enablePrivateDnsZoneSetup": false
+      }
+    }
+  }
+}

@@ -1,0 +1,174 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "deploymentContext": {
+      "value": {
+        "subscriptionId": "6d2cdf2f-3fbe-4679-95ba-4e8b7d9aed24",
+        "location": "usgovvirginia",
+        "tags": {
+          "Environment": "Ops",
+          "Project": "PrivateAKS-v2",
+          "Owner": "brsteel"
+        }
+      }
+    },
+    "enclaveConfiguration": {
+      "value": {
+        "resourceGroupName": "rg-ave-enclave-ops01",
+        "name": "enclave-aks-ops01-mmoff",
+        "communityResourceId": "/subscriptions/afb59830-1fc9-44c9-bba3-04f657483578/resourceGroups/ave-community-rg/providers/Microsoft.Mission/communities/avecommunity",
+        "customCidrRange": "10.0.6.0/23",
+        "diagnosticDestination": "Both",
+        "enableBastion": true,
+        "allowSubnetCommunication": false,
+        "enclaveRoleAssignments": [
+          {
+            "roleDefinitionId": "b24988ac-6180-42a0-ab88-20f7382dd24c",
+            "principals": [
+              {
+                "id": "0aca692d-ef60-42c0-bc13-06ada74051dc",
+                "type": "Group"
+              }
+            ]
+          }
+        ],
+        "maintenanceModePrincipals": [
+          {
+            "id": "54bf076b-9563-49ed-9ad3-50d3c0e2bd21",
+            "type": "Group"
+          }
+        ],
+        "maintenanceMode": "Advanced",
+        "workloadRoleAssignments": [
+          {
+            "roleDefinitionId": "b24988ac-6180-42a0-ab88-20f7382dd24c",
+            "principals": [
+              {
+                "id": "416fc348-8466-4e6e-98ab-0a3d9102fef7",
+                "type": "Group"
+              }
+            ]
+          }
+        ],
+        "subnetDefinitions": [
+          {
+            "name": "aks-system",
+            "networkPrefixSize": 25
+          },
+          {
+            "name": "aks-user1",
+            "networkPrefixSize": 25
+          },
+          {
+            "name": "aks-user2",
+            "networkPrefixSize": 25
+          },
+          {
+            "name": "privateendpoints",
+            "networkPrefixSize": 25
+          }
+        ],
+        "allowedSubnetCommunications": [
+          {
+            "sourceSubnetName": "aks-system",
+            "destinationSubnetName": "aks-user1",
+            "sourceNsgName": "aks-system-enclave-nsg",
+            "destinationNsgName": "aks-user1-enclave-nsg",
+            "direction": "both",
+            "protocol": "*",
+            "sourcePortRange": "*",
+            "destinationPortRange": "*"
+          },
+          {
+            "sourceSubnetName": "aks-system",
+            "destinationSubnetName": "aks-user2",
+            "sourceNsgName": "aks-system-enclave-nsg",
+            "destinationNsgName": "aks-user2-enclave-nsg",
+            "direction": "both",
+            "protocol": "*",
+            "sourcePortRange": "*",
+            "destinationPortRange": "*"
+          },
+          {
+            "sourceSubnetName": "aks-system",
+            "destinationSubnetName": "privateendpoints",
+            "sourceNsgName": "aks-system-enclave-nsg",
+            "destinationNsgName": "privateendpoints-enclave-nsg",
+            "direction": "both",
+            "protocol": "*",
+            "sourcePortRange": "*",
+            "destinationPortRange": "*"
+          },
+          {
+            "sourceSubnetName": "aks-user1",
+            "destinationSubnetName": "aks-user2",
+            "sourceNsgName": "aks-user1-enclave-nsg",
+            "destinationNsgName": "aks-user2-enclave-nsg",
+            "direction": "both",
+            "protocol": "*",
+            "sourcePortRange": "*",
+            "destinationPortRange": "*"
+          },
+          {
+            "sourceSubnetName": "aks-user1",
+            "destinationSubnetName": "privateendpoints",
+            "sourceNsgName": "aks-user1-enclave-nsg",
+            "destinationNsgName": "privateendpoints-enclave-nsg",
+            "direction": "both",
+            "protocol": "*",
+            "sourcePortRange": "*",
+            "destinationPortRange": "*"
+          },
+          {
+            "sourceSubnetName": "aks-user2",
+            "destinationSubnetName": "privateendpoints",
+            "sourceNsgName": "aks-user2-enclave-nsg",
+            "destinationNsgName": "privateendpoints-enclave-nsg",
+            "direction": "both",
+            "protocol": "*",
+            "sourcePortRange": "*",
+            "destinationPortRange": "*"
+          }
+        ],
+        "subnetCommunicationRuleNamePrefix": "allow-subnet",
+        "subnetCommunicationPriorityStart": 3000
+      }
+    },
+    "connectivityConfiguration": {
+      "value": {
+        "enableAksRequiredConnectivity": true,
+        "aksRequiredSourceSubnetNames": [
+          "aks-system",
+          "aks-user1",
+          "aks-user2"
+        ]
+      }
+    },
+    "aksFoundationConfiguration": {
+      "value": {
+        "aksControlPlaneIdentity": {
+          "resourceGroupName": "rg-aks-wl-ops01",
+          "name": "uai-aks-ops01-cp"
+        },
+        "uaiMaintenanceMode": {
+          "mode": "none"
+        },
+        "workloadFoundationResources": {
+          "enabled": true,
+          "resourceGroupName": "rg-aks-wl-ops01"
+        },
+        "workloadRegistration": {
+          "workloadName": "akswl-ops01",
+          "resourceGroupName": "rg-aks-wl-ops01"
+        },
+        "egressRouteTableName": "rt-aks-egress",
+        "egressSubnetNames": [
+          "aks-system",
+          "aks-user1",
+          "aks-user2"
+        ]
+      }
+    }
+  }
+}
